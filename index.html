@@ -237,11 +237,12 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   <div class="login-card">
     <h2>로그인</h2>
     <div class="form-group">
-      <label>Apps Script </label>
-      <input type="url" id="cfg-url" placeholder="https://script.google.com/macros/s/.../exec" onkeydown="if(event.key==='Enter')doLogin()" />    </div>
+      <label>Apps Script URL</label>
+      <input type="url" id="cfg-url" placeholder="https://script.google.com/macros/s/.../exec" />
+    </div>
     <div class="form-group">
       <label>비밀번호</label>
-      <input type="password" id="cfg-key" placeholder="관리자 또는 직원 비밀번호" onkeydown="if(event.key==='Enter')doLogin()" />
+      <input type="password" id="cfg-key" placeholder="관리자 또는 직원 비밀번호" />
     </div>
     <button class="btn-primary" onclick="doLogin()">로그인</button>
     <div class="login-status" id="login-status"></div>
@@ -526,7 +527,26 @@ function renderRegForm(sheet){
   }
 
   if(sheet==='Own_Products'){
-    html += `<div class="form-group"><label>도매가 (₩)</label><input type="number" id="reg-wholesale-price" placeholder="0" /></div>`;
+    html += `
+      <div class="form-group"><label>도매가 (₩)</label><input type="number" id="reg-wholesale-price" placeholder="0" /></div>
+      <div class="form-group"><label>원가 (₩)</label><input type="number" id="reg-cost-price" placeholder="0" /><p class="hint">내부용 — 고객에게 노출 안 됨</p></div>
+      <div class="form-group"><label>주문서 참조번호</label><input type="text" id="reg-order-ref" placeholder="예: PO-2024-001" /></div>
+      <div class="form-group">
+        <label>추가사진 (다각도, 착용샷)</label>
+        <div class="upload-area">
+          <span id="upload-label-images">📷 여러 장 선택 가능</span>
+          <input type="file" accept="image/*" multiple onchange="handleMultipleImages(this,'images')" />
+        </div>
+        <p class="hint">여러 장 한꺼번에 선택 가능</p>
+      </div>
+      <div class="form-group">
+        <label>문서 (주문서, 영수증)</label>
+        <div class="upload-area">
+          <span id="upload-label-docs">📄 문서 선택</span>
+          <input type="file" accept="image/*,application/pdf" multiple onchange="handleMultipleImages(this,'documents')" />
+        </div>
+        <p class="hint">내부용 — 고객에게 노출 안 됨</p>
+      </div>`;
   }
 
   html += `
@@ -562,6 +582,40 @@ function renderRegForm(sheet){
 }
 
 let compressedImageBase64 = '';
+let extraImages = {};
+
+function handleMultipleImages(inp, field){
+  if(!inp.files.length)return;
+  const files = Array.from(inp.files);
+  const labelId = field==='images'?'upload-label-images':'upload-label-docs';
+  document.getElementById(labelId).textContent=`✓ ${files.length}개 선택됨`;
+  extraImages[field] = [];
+  let processed = 0;
+  files.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const canvas = document.createElement('canvas');
+        const MAX = 800;
+        let w=img.width, h=img.height;
+        if(w>h){if(w>MAX){h=h*(MAX/w);w=MAX;}}
+        else{if(h>MAX){w=w*(MAX/h);h=MAX;}}
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        extraImages[field].push(canvas.toDataURL('image/jpeg',0.75));
+        processed++;
+      };
+      img.src = e.target.result;
+      // PDF나 문서는 그대로
+      if(!file.type.startsWith('image/')){
+        extraImages[field].push(e.target.result);
+        processed++;
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 function handleImage(inp){
   if(!inp.files[0])return;
@@ -637,6 +691,10 @@ function registerProduct(){
     individual_manage:getVal('reg-individual'),
     popup_price:getVal('reg-popup-price'),
     wholesale_price:getVal('reg-wholesale-price'),
+    cost_price:getVal('reg-cost-price'),
+    order_ref:getVal('reg-order-ref'),
+    images:(extraImages['images']||[]).join(','),
+    documents:(extraImages['documents']||[]).join(','),
   };
 
   api(params).then(data=>{
