@@ -761,7 +761,7 @@ function renderList(){
 }
 
 function toggleSel(id,cb){
-  const p=products.find(x=>x.customer_id===id);
+  cconst p=products.find(x=>String(x.customer_id)===String(id));
   if(p)p.selected=cb.checked;
   updateSelCount();
 }
