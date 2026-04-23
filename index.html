@@ -789,7 +789,7 @@ function applyFilters(){
   const visible=getFilterVal('f-visible');
   const sort=getFilterVal('f-sort');
 
-  if(cat) result=result.filter(p=>p.category&&p.category.includes(cat));
+  if(cat) result=result.filter(p=>p.category&&(p.category===cat||p.category.includes(cat)));
   if(stone) result=result.filter(p=>p.main_stone===stone||p.sub_stone===stone);
   if(material) result=result.filter(p=>p.category&&p.category.startsWith(material));
   if(artist) result=result.filter(p=>p.artist===artist);
