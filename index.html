@@ -360,6 +360,52 @@ const CATEGORIES = {
   'Gemstones': ['원석']
 };
 
+let stonesCache = [];
+
+function loadStones(){
+  api({action:'getStones'}).then(data=>{
+    if(data.status==='ok'){
+      stonesCache=data.data;
+      updateStoneDropdowns();
+      if(userRole==='admin'){
+        const g=document.getElementById('new-stone-group');
+        if(g)g.style.display='block';
+      }
+    }
+  });
+}
+
+function updateStoneDropdowns(){
+  const ids=['reg-main-stone','reg-sub-stone'];
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    const firstOpt=el.options[0].cloneNode(true);
+    el.innerHTML='';
+    el.appendChild(firstOpt);
+    stonesCache.forEach(s=>{
+      const o=document.createElement('option');
+      o.value=s.name_kr;
+      o.textContent=s.name_kr+(s.category?` (${s.category})`:'');
+      el.appendChild(o);
+    });
+  });
+}
+
+function addNewStone(){
+  const kr=document.getElementById('new-stone-kr').value.trim();
+  const en=document.getElementById('new-stone-en').value.trim();
+  if(!kr){showToast('한글 이름을 입력하세요');return;}
+  api({action:'addStone',name_kr:kr,name_en:en}).then(data=>{
+    if(data.status==='ok'){
+      showToast('✓ 스톤 추가 완료');
+      document.getElementById('new-stone-kr').value='';
+      document.getElementById('new-stone-en').value='';
+      loadStones();
+    }
+  });
+}
+
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
@@ -417,6 +463,7 @@ function switchNav(v){
   if(v==='list')loadList();
   if(v==='dashboard')loadStats();
   if(v==='catalog')loadCatalog();
+  if(v==='register')loadStones();
 }
 
 function loadStats(){
@@ -469,8 +516,22 @@ function renderRegForm(sheet){
 
   if(sheet==='Rokuzan'){
     html+=`
-      <div class="form-group"><label>중심스톤</label><input type="text" id="reg-main-stone" placeholder="예: 루비, 에메랄드" /></div>
-      <div class="form-group"><label>보조스톤</label><input type="text" id="reg-sub-stone" placeholder="예: 다이아몬드" /></div>
+      <div class="form-group">
+        <label>중심스톤</label>
+        <select id="reg-main-stone"><option value="">선택...</option></select>
+      </div>
+      <div class="form-group">
+        <label>보조스톤</label>
+        <select id="reg-sub-stone"><option value="">없음</option></select>
+      </div>
+      <div class="form-group" id="new-stone-group" style="display:none">
+        <label>새 스톤 추가 (관리자만)</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="new-stone-kr" placeholder="한글 이름" style="flex:1" />
+          <input type="text" id="new-stone-en" placeholder="영문" style="flex:1" />
+          <button onclick="addNewStone()" style="padding:8px 12px;background:var(--gold);border:none;border-radius:var(--radius-sm);color:#fff;cursor:pointer;font-size:12px">추가</button>
+        </div>
+      </div>
       <div class="form-group"><label>세트번호</label><input type="text" id="reg-set-number" placeholder="세트 구성시 입력" /></div>
       <div class="form-group"><label>변형 원본번호</label><input type="text" id="reg-original-id" placeholder="변형 제품일 경우 원본 고객번호" /></div>
       <div class="form-group"><label>변형 내용</label><input type="text" id="reg-modify-desc" placeholder="예: 귀걸이→브로치 2개" /></div>`;
@@ -789,7 +850,7 @@ function applyFilters(){
   const visible=getFilterVal('f-visible');
   const sort=getFilterVal('f-sort');
 
-  if(cat) result=result.filter(p=>p.category&&(p.category===cat||p.category.includes(cat)));
+  if(cat) result=result.filter(p=>p.category&&p.category.includes(cat));
   if(stone) result=result.filter(p=>p.main_stone===stone||p.sub_stone===stone);
   if(material) result=result.filter(p=>p.category&&p.category.startsWith(material));
   if(artist) result=result.filter(p=>p.artist===artist);
