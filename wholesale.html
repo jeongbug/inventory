@@ -99,6 +99,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
       <div class="header-logo">Wholesale</div>
       <div class="header-title">도매 제품 조회</div>
       <div class="header-subtitle">거래처 전용 — 무단 복사/유출 금지</div>
+      <div id="today-date" style="font-size:11px;color:rgba(255,255,255,.7);margin-top:2px"></div>
       <button class="logout-btn" onclick="doLogout()">로그아웃</button>
     </div>
 
@@ -130,6 +131,18 @@ let wsKey = sessionStorage.getItem('ws_key') || '';
 document.addEventListener('contextmenu', e => {
   if(e.target.tagName === 'IMG') e.preventDefault();
 });
+
+// 오늘 날짜
+(function(){
+  const days=['일','월','화','수','목','금','토'];
+  const now=new Date();
+  const y=now.getFullYear();
+  const m=now.getMonth()+1;
+  const d=now.getDate();
+  const day=days[now.getDay()];
+  const el=document.getElementById('today-date');
+  if(el)el.textContent=`${y}년 ${m}월 ${d}일 ${day}요일`;
+})();
 
 if(wsKey) showMain();
 
