@@ -544,7 +544,41 @@ function doLogin(){
   const url=document.getElementById('cfg-url').value.trim();
   const key=document.getElementById('cfg-key').value.trim();
   const st=document.getElementById('login-status');
-  if(!url||!key){st.className='login-status s-err';st.textContent='URL과 비밀번호를 입력하세요';return;}
+  if(!url||!key){st.className='login-status s-err';st.textContent='비밀번호를 입력하세요';return;}
+
+  // 캐시된 role 확인
+  const cachedAuth=localStorage.getItem('jw_auth_cache');
+  if(cachedAuth){
+    const auth=JSON.parse(cachedAuth);
+    if(auth.key===key){
+      // 캐시된 role로 즉시 로그인
+      userRole=auth.role;
+      cfg={url,key};
+      localStorage.setItem('jw_admin_cfg',JSON.stringify(cfg));
+      st.className='login-status s-loading';st.textContent='로그인 중...';
+      // getStats만 호출 (getRole 생략)
+      fetch(url+'?key='+encodeURIComponent(key)+'&action=getStats')
+        .then(r=>r.json()).then(data=>{
+          if(data.status==='ok'){
+            showMain(data.data);
+            // 백그라운드에서 role 재확인
+            fetch(url+'?key='+encodeURIComponent(key)+'&action=getRole')
+              .then(r=>r.json()).then(rd=>{
+                if(rd.status==='ok') localStorage.setItem('jw_auth_cache',JSON.stringify({key,role:rd.role}));
+              }).catch(()=>{});
+          } else {
+            // 비밀번호 변경된 경우
+            localStorage.removeItem('jw_auth_cache');
+            st.className='login-status s-err';st.textContent='비밀번호가 틀렸습니다';
+          }
+        }).catch(()=>{
+          st.className='login-status s-err';st.textContent='연결 실패';
+        });
+      return;
+    }
+  }
+
+  // 캐시 없으면 일반 로그인
   st.className='login-status s-loading';st.textContent='로그인 중...';
   fetch(url+'?key='+encodeURIComponent(key)+'&action=getRole')
     .then(r=>r.json()).then(roleData=>{
@@ -552,6 +586,7 @@ function doLogin(){
         userRole=roleData.role;
         cfg={url,key};
         localStorage.setItem('jw_admin_cfg',JSON.stringify(cfg));
+        localStorage.setItem('jw_auth_cache',JSON.stringify({key,role:roleData.role}));
         fetch(url+'?key='+encodeURIComponent(key)+'&action=getStats')
           .then(r=>r.json()).then(data=>{
             if(data.status==='ok') showMain(data.data);
