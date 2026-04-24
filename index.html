@@ -899,43 +899,55 @@ function registerProduct(){
 // 금 시세
 // ================================
 function loadGoldPrice(){
+  const el=document.getElementById('gold-price-display');
+  
+  // 캐시된 시세 즉시 표시
+  const cached=localStorage.getItem('gold_price_cache');
+  if(cached){
+    renderGoldPrice(JSON.parse(cached), el);
+  }
+  
+  // API 호출해서 최신 데이터 업데이트
   api({action:'getGoldPrice'}).then(data=>{
-    const el=document.getElementById('gold-price-display');
     if(data.status==='ok'&&data.data){
-      const g=data.data;
-      const fmt=v=>v?Number(v).toLocaleString()+'원':'-';
-      el.innerHTML=`
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
-          <div style="text-align:center">
-            <div style="font-size:10px;color:var(--text3);margin-bottom:2px">순금 판매</div>
-            <div style="font-size:18px;font-weight:700;color:var(--gold)">${fmt(g.gold_sell)}</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:10px;color:var(--text3);margin-bottom:2px">순금 매입</div>
-            <div style="font-size:18px;font-weight:700;color:var(--text)">${fmt(g.gold_buy)}</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:10px;color:var(--text3);margin-bottom:2px">14K 매입</div>
-            <div style="font-size:14px;font-weight:500">${fmt(g.k14_buy)}</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:10px;color:var(--text3);margin-bottom:2px">18K 매입</div>
-            <div style="font-size:14px;font-weight:500">${fmt(g.k18_buy)}</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:10px;color:var(--text3);margin-bottom:2px">은수저 99%</div>
-            <div style="font-size:13px;font-weight:500">${fmt(g.silver_buy)}</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:10px;color:var(--text3);margin-bottom:2px">백금 99%</div>
-            <div style="font-size:13px;font-weight:500">${fmt(g.platinum_buy)}</div>
-          </div>
-        </div>
-        <div style="text-align:right;font-size:10px;color:var(--text3);margin-top:8px">기준시간: ${g.time||''}</div>`;
-    } else {
+      localStorage.setItem('gold_price_cache', JSON.stringify(data.data));
+      renderGoldPrice(data.data, el);
+    } else if(!cached) {
       el.innerHTML='<div style="text-align:center;color:var(--text2);font-size:13px">오늘 시세가 없습니다</div>';
     }
   });
+}
+
+function renderGoldPrice(g, el){
+  const fmt=v=>v?Number(v).toLocaleString()+'원':'-';
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+      <div style="text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px">순금 판매</div>
+        <div style="font-size:18px;font-weight:700;color:var(--gold)">${fmt(g.gold_sell)}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px">순금 매입</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text)">${fmt(g.gold_buy)}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px">14K 매입</div>
+        <div style="font-size:14px;font-weight:500">${fmt(g.k14_buy)}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px">18K 매입</div>
+        <div style="font-size:14px;font-weight:500">${fmt(g.k18_buy)}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px">은수저 99%</div>
+        <div style="font-size:13px;font-weight:500">${fmt(g.silver_buy)}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px">백금 99%</div>
+        <div style="font-size:13px;font-weight:500">${fmt(g.platinum_buy)}</div>
+      </div>
+    </div>
+    <div style="text-align:right;font-size:10px;color:var(--text3);margin-top:8px">기준시간: ${g.time||''}</div>`;
 }
 
 function toggleGoldInput(){
