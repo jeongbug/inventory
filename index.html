@@ -586,7 +586,7 @@ function loadStats(){
   api({action:'getStats'}).then(data=>{
     if(data.status==='ok')renderStats(data.data);
   });
-  loadGoldPrice();
+  setTimeout(()=>loadGoldPrice(), 100);
 }
 
 function renderStats(stats){
