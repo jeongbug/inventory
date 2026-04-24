@@ -190,6 +190,13 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <h1>재고 관리</h1>
     <p>내부 관리 시스템</p>
   </div>
+
+  <!-- 로그인 전 금 시세 표시 -->
+  <div style="background:var(--gold-pale);border:1px solid var(--gold-border);border-radius:var(--radius);padding:12px;margin-bottom:14px">
+    <p style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">💰 오늘 금 시세</p>
+    <div id="login-gold-display" style="font-size:13px;color:var(--text2);text-align:center">불러오는 중...</div>
+  </div>
+
   <div class="login-card">
     <h2>로그인</h2>
     <input type="hidden" id="cfg-url" value="https://script.google.com/macros/s/AKfycbzOZJk0T8BZS2OKfS8eYm5Ras0cqvnU8vjVIUQDhNdp9WkuU3jwjDHpgfOODV4kRm1MQw/exec" />
@@ -563,8 +570,8 @@ function showMain(stats){
   ms.style.display='flex';ms.style.flexDirection='column';
   renderStats(stats);
   renderRegForm(currentRegSheet);
-  setTimeout(()=>loadGoldPrice(), 50);
 }
+
 function showLogin(){
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('main-screen').style.display='none';
@@ -586,7 +593,7 @@ function loadStats(){
   api({action:'getStats'}).then(data=>{
     if(data.status==='ok')renderStats(data.data);
   });
-  setTimeout(()=>loadGoldPrice(), 100);
+  loadGoldPrice();
 }
 
 function renderStats(stats){
@@ -1561,18 +1568,50 @@ function exportCatalog(){
   if(el)el.textContent=`${y}년 ${m}월 ${d}일 ${day}요일`;
 })();
 
-if(cfg.url&&cfg.key){
-  fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&action=getRole')
-    .then(r=>r.json()).then(roleData=>{
-      if(roleData.status==='ok'){
-        userRole=roleData.role;
-        fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&action=getStats')
-          .then(r=>r.json()).then(data=>{
-            if(data.status==='ok') showMain(data.data);
-          });
-      }
-    }).catch(()=>{});
-}
+// 자동 로그인 제거 — 항상 로그인 화면 표시
+// 로그인 화면에서 금 시세 로드
+(function(){
+  const API_URL = document.getElementById('cfg-url').value;
+  const el = document.getElementById('login-gold-display');
+  const fmt = v => v ? Number(v).toLocaleString()+'원' : '-';
+
+  // 캐시 먼저 표시
+  const cached = localStorage.getItem('gold_price_cache');
+  if(cached){
+    const g = JSON.parse(cached);
+    el.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--text3)">순금 판매</div>
+          <div style="font-size:16px;font-weight:700;color:var(--gold)">${fmt(g.gold_sell)}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--text3)">순금 매입</div>
+          <div style="font-size:16px;font-weight:700">${fmt(g.gold_buy)}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--text3)">14K 매입</div>
+          <div style="font-size:13px;font-weight:500">${fmt(g.k14_buy)}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--text3)">18K 매입</div>
+          <div style="font-size:13px;font-weight:500">${fmt(g.k18_buy)}</div>
+        </div>
+      </div>
+      <div style="text-align:right;font-size:10px;color:var(--text3);margin-top:4px">${g.date||''} ${g.time||''}</div>`;
+
+    // 오늘 날짜면 API 호출 생략
+    const today = new Date().toLocaleDateString('ko-KR');
+    if(g.date === today) return;
+  }
+
+  // API 호출로 최신 데이터 가져오기
+  // 공개 키 없이 getGoldPrice만 허용하려면 별도 처리 필요
+  // 일단 캐시 없을 때만 표시
+  if(!cached){
+    el.textContent = '시세 없음';
+  }
+})();
 </script>
 </body>
 </html>
