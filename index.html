@@ -406,6 +406,46 @@ function addNewStone(){
   });
 }
 
+let materialsCache=[];
+
+function loadMaterials(){
+  api({action:'getMaterials'}).then(data=>{
+    if(data.status==='ok'){
+      materialsCache=data.data;
+      updateMaterialDropdowns();
+      if(userRole==='admin'){
+        const g=document.getElementById('new-material-group');
+        if(g)g.style.display='block';
+      }
+    }
+  });
+}
+
+function updateMaterialDropdowns(){
+  const baseEl=document.getElementById('reg-base-material');
+  const platingEl=document.getElementById('reg-plating');
+  if(!baseEl||!platingEl)return;
+  const bases=materialsCache.filter(m=>m.type==='순금속');
+  const platings=materialsCache.filter(m=>m.type==='도금');
+  baseEl.innerHTML='<option value="">선택...</option>';
+  bases.forEach(m=>{const o=document.createElement('option');o.value=m.name;o.textContent=m.name;baseEl.appendChild(o);});
+  platingEl.innerHTML='<option value="없음">없음</option>';
+  platings.forEach(m=>{const o=document.createElement('option');o.value=m.name;o.textContent=m.name;platingEl.appendChild(o);});
+}
+
+function addNewMaterial(){
+  const name=document.getElementById('new-material-name').value.trim();
+  const type=document.getElementById('new-material-type').value;
+  if(!name){showToast('소재명을 입력하세요');return;}
+  api({action:'addMaterial',name,type}).then(data=>{
+    if(data.status==='ok'){
+      showToast('✓ 소재 추가 완료');
+      document.getElementById('new-material-name').value='';
+      loadMaterials();
+    }
+  });
+}
+
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
@@ -463,7 +503,7 @@ function switchNav(v){
   if(v==='list')loadList();
   if(v==='dashboard')loadStats();
   if(v==='catalog')loadCatalog();
-  if(v==='register')loadStones();
+  if(v==='register'){loadStones();loadMaterials();}
 }
 
 function loadStats(){
@@ -540,7 +580,25 @@ function renderRegForm(sheet){
   if(sheet==='Own_Products'){
     html+=`
       <div class="form-group"><label>브랜드</label><input type="text" id="reg-brand" placeholder="브랜드명" /></div>
-      <div class="form-group"><label>소재</label><input type="text" id="reg-material" placeholder="예: 925실버, 14K골드" /></div>
+      <div class="form-group">
+        <label>베이스 소재</label>
+        <select id="reg-base-material"><option value="">선택...</option></select>
+      </div>
+      <div class="form-group">
+        <label>도금</label>
+        <select id="reg-plating"><option value="없음">없음</option></select>
+      </div>
+      <div class="form-group" id="new-material-group" style="display:none">
+        <label>새 소재 추가 (관리자만)</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="new-material-name" placeholder="소재명" style="flex:1" />
+          <select id="new-material-type" style="padding:8px">
+            <option value="순금속">순금속</option>
+            <option value="도금">도금</option>
+          </select>
+          <button onclick="addNewMaterial()" style="padding:8px 12px;background:var(--gold);border:none;border-radius:var(--radius-sm);color:#fff;cursor:pointer;font-size:12px">추가</button>
+        </div>
+      </div>
       <div class="form-group"><label>도매가 (₩)</label><input type="number" id="reg-wholesale-price" placeholder="0" /></div>
       <div class="form-group"><label>원가 (₩)</label><input type="number" id="reg-cost-price" placeholder="0" /><p class="hint">내부용</p></div>
       <div class="form-group"><label>주문서 참조번호</label><input type="text" id="reg-order-ref" placeholder="예: PO-2024-001" /></div>
@@ -700,7 +758,8 @@ function registerProduct(){
     original_id:getVal('reg-original-id'),
     modify_desc:getVal('reg-modify-desc'),
     brand:getVal('reg-brand'),
-    material:getVal('reg-material'),
+    base_material:getVal('reg-base-material'),
+    plating:getVal('reg-plating'),
     title:getVal('reg-title'),
     artist:getVal('reg-artist'),
     gems_used:getVal('reg-gems'),
