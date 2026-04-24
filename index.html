@@ -406,38 +406,56 @@ function addNewStone(){
   });
 }
 
-let materialsCache=[];
+let metalsCache=[];
+let platingsCache=[];
 
 function loadMaterials(){
-  api({action:'getMaterials'}).then(data=>{
+  api({action:'getMetals'}).then(data=>{
     if(data.status==='ok'){
-      materialsCache=data.data;
-      updateMaterialDropdowns();
-      if(userRole==='admin'){
-        const g=document.getElementById('new-material-group');
-        if(g)g.style.display='block';
-      }
+      metalsCache=data.data;
+      updateBaseDropdown();
     }
+  });
+  api({action:'getPlatings'}).then(data=>{
+    if(data.status==='ok'){
+      platingsCache=data.data;
+      updatePlatingDropdown();
+    }
+  });
+  if(userRole==='admin'){
+    const g=document.getElementById('new-material-group');
+    if(g)g.style.display='block';
+  }
+}
+
+function updateBaseDropdown(){
+  const el=document.getElementById('reg-base-material');
+  if(!el)return;
+  el.innerHTML='<option value="">선택...</option>';
+  metalsCache.forEach(m=>{
+    const o=document.createElement('option');
+    o.value=m.name;o.textContent=m.name;
+    el.appendChild(o);
   });
 }
 
-function updateMaterialDropdowns(){
-  const baseEl=document.getElementById('reg-base-material');
-  const platingEl=document.getElementById('reg-plating');
-  if(!baseEl||!platingEl)return;
-  const bases=materialsCache.filter(m=>m.type==='순금속');
-  const platings=materialsCache.filter(m=>m.type==='도금');
-  baseEl.innerHTML='<option value="">선택...</option>';
-  bases.forEach(m=>{const o=document.createElement('option');o.value=m.name;o.textContent=m.name;baseEl.appendChild(o);});
-  platingEl.innerHTML='<option value="없음">없음</option>';
-  platings.forEach(m=>{const o=document.createElement('option');o.value=m.name;o.textContent=m.name;platingEl.appendChild(o);});
+function updatePlatingDropdown(){
+  const el=document.getElementById('reg-plating');
+  if(!el)return;
+  el.innerHTML='<option value="없음">없음</option>';
+  platingsCache.forEach(m=>{
+    const o=document.createElement('option');
+    o.value=m.name;o.textContent=m.name;
+    el.appendChild(o);
+  });
 }
 
 function addNewMaterial(){
   const name=document.getElementById('new-material-name').value.trim();
   const type=document.getElementById('new-material-type').value;
   if(!name){showToast('소재명을 입력하세요');return;}
-  api({action:'addMaterial',name,type}).then(data=>{
+  const action=type==='순금속'?'addMetal':'addPlating';
+  api({action,name}).then(data=>{
     if(data.status==='ok'){
       showToast('✓ 소재 추가 완료');
       document.getElementById('new-material-name').value='';
