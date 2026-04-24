@@ -908,21 +908,32 @@ function registerProduct(){
 // ================================
 function loadGoldPrice(){
   const el=document.getElementById('gold-price-display');
-  
-  // 캐시된 시세 즉시 표시
+  const today=new Date().toLocaleDateString('ko-KR');
+
+  // 캐시 확인
   const cached=localStorage.getItem('gold_price_cache');
   if(cached){
-    renderGoldPrice(JSON.parse(cached), el);
+    const data=JSON.parse(cached);
+    renderGoldPrice(data, el);
+    // 오늘 날짜 캐시면 API 호출 생략
+    if(data.date===today) return;
+    // 어제 데이터면 "이전 시세" 표시 후 백그라운드 업데이트
+    el.style.opacity='0.6';
+  } else {
+    el.innerHTML='<div style="text-align:center;color:var(--text2);font-size:13px">불러오는 중...</div>';
   }
-  
-  // API 호출해서 최신 데이터 업데이트
+
+  // API 호출
   api({action:'getGoldPrice'}).then(data=>{
+    el.style.opacity='1';
     if(data.status==='ok'&&data.data){
       localStorage.setItem('gold_price_cache', JSON.stringify(data.data));
       renderGoldPrice(data.data, el);
-    } else if(!cached) {
+    } else if(!cached){
       el.innerHTML='<div style="text-align:center;color:var(--text2);font-size:13px">오늘 시세가 없습니다</div>';
     }
+  }).catch(()=>{
+    el.style.opacity='1';
   });
 }
 
@@ -1008,6 +1019,18 @@ function saveGoldPrice(){
       showToast('✓ 시세 저장 완료');
       document.getElementById('gold-input-form').style.display='none';
       document.getElementById('gold-paste').value='';
+      // 캐시 즉시 업데이트
+      const cacheData = {
+        date: new Date().toLocaleDateString('ko-KR'),
+        time: new Date().getHours().toString().padStart(2,'0')+':'+new Date().getMinutes().toString().padStart(2,'0'),
+        gold_buy: params.gold_buy.replace(/\./g,''),
+        gold_sell: params.gold_sell.replace(/\./g,''),
+        k14_buy: params.k14_buy.replace(/\./g,''),
+        k18_buy: params.k18_buy.replace(/\./g,''),
+        silver_buy: params.silver_buy.replace(/\./g,''),
+        platinum_buy: params.platinum_buy.replace(/\./g,'')
+      };
+      localStorage.setItem('gold_price_cache', JSON.stringify(cacheData));
       loadGoldPrice();
     }
   });
