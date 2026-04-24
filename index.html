@@ -556,15 +556,22 @@ function selectRegSheet(el,sheet){
   document.querySelectorAll('#reg-tabs .sheet-tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   currentRegSheet=sheet;
-  renderRegForm(sheet);
-  if(sheet==='Own_Products'){
+renderRegForm(sheet);
+if(sheet==='Own_Products'){
+  setTimeout(()=>{
+    updateBaseDropdown();
+    updatePlatingDropdown();
+    renderRegForm(sheet);
+if(sheet==='Own_Products'){
+  setTimeout(()=>{
     updateBaseDropdown();
     updatePlatingDropdown();
     if(userRole==='admin'){
       const g=document.getElementById('new-material-group');
       if(g)g.style.display='block';
     }
-  }
+  },100);
+}
   if(sheet==='Rokuzan'||sheet==='Own_Products'){
     updateStoneDropdowns();
   }
