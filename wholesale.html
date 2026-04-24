@@ -104,12 +104,17 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     </div>
 
     <div class="search-wrap">
+      <div id="gold-price-wrap" style="background:var(--panel);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;margin-bottom:12px">
+        <p style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px">💰 오늘 금 시세</p>
+        <div id="ws-gold-display" style="font-size:13px;color:var(--text2);text-align:center">불러오는 중...</div>
+      </div>
       <div class="search-box">
         <span class="search-label">제품 번호를 입력하세요</span>
         <div class="search-row">
           <input type="text" id="search-inp" placeholder="제품 번호 입력..." onkeydown="if(event.key==='Enter')doSearch()" autocomplete="off" />
           <button class="btn-search" onclick="doSearch()">조회</button>
         </div>
+      </div>
       </div>
     </div>
 
@@ -169,6 +174,40 @@ function showMain(){
   document.getElementById('login-screen').style.display='none';
   const ms=document.getElementById('main-screen');
   ms.style.display='flex';ms.style.flexDirection='column';
+  loadWsGoldPrice();
+}
+
+function loadWsGoldPrice(){
+  fetch(API_URL+'?key='+encodeURIComponent(wsKey)+'&action=getGoldPrice')
+    .then(r=>r.json()).then(data=>{
+      const el=document.getElementById('ws-gold-display');
+      if(data.status==='ok'&&data.data){
+        const g=data.data;
+        const fmt=v=>v?Number(v).toLocaleString()+'원':'-';
+        el.innerHTML=`
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">
+            <div style="text-align:center">
+              <div style="font-size:10px;color:var(--text3)">순금 판매</div>
+              <div style="font-size:16px;font-weight:700;color:var(--blue)">${fmt(g.gold_sell)}</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:10px;color:var(--text3)">순금 매입</div>
+              <div style="font-size:16px;font-weight:700">${fmt(g.gold_buy)}</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:10px;color:var(--text3)">14K 매입</div>
+              <div style="font-size:13px;font-weight:500">${fmt(g.k14_buy)}</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:10px;color:var(--text3)">18K 매입</div>
+              <div style="font-size:13px;font-weight:500">${fmt(g.k18_buy)}</div>
+            </div>
+          </div>
+          <div style="text-align:right;font-size:10px;color:var(--text3);margin-top:6px">기준시간: ${g.time||''}</div>`;
+      } else {
+        el.textContent='오늘 시세 없음';
+      }
+    });
 }
 
 function doLogout(){

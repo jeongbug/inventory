@@ -217,6 +217,52 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   <!-- 홈 -->
   <div class="view active" id="view-dashboard">
     <p class="page-title">대시보드 <span class="role-badge" id="role-badge"></span></p>
+    
+    <!-- 금 시세 -->
+    <div id="gold-price-section" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <p style="font-size:13px;font-weight:700;color:var(--gold)">💰 오늘 금 시세</p>
+        <button class="btn-sm" onclick="toggleGoldInput()">시세 입력</button>
+      </div>
+      <div id="gold-price-display" style="background:var(--gold-pale);border:1px solid var(--gold-border);border-radius:var(--radius);padding:12px">
+        <div style="text-align:center;color:var(--text2);font-size:13px">불러오는 중...</div>
+      </div>
+      <!-- 시세 입력 폼 -->
+      <div id="gold-input-form" style="display:none;margin-top:10px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
+        <p style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text2)">카톡 메시지 붙여넣기 또는 직접 입력</p>
+        <div style="margin-bottom:10px">
+          <textarea id="gold-paste" placeholder="카톡 메시지 붙여넣기..." style="width:100%;height:80px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'Noto Sans KR',sans-serif;resize:none" oninput="parseGoldMessage()"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px">
+          <div class="form-group" style="margin:0">
+            <label style="font-size:11px">순금 매입 (원/g)</label>
+            <input type="text" id="g-gold-buy" placeholder="예: 120.000" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label style="font-size:11px">순금 판매 (원/g)</label>
+            <input type="text" id="g-gold-sell" placeholder="예: 125.000" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label style="font-size:11px">14K 매입 (원/g)</label>
+            <input type="text" id="g-k14-buy" placeholder="예: 85.000" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label style="font-size:11px">18K 매입 (원/g)</label>
+            <input type="text" id="g-k18-buy" placeholder="예: 100.000" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label style="font-size:11px">은수저 99% 매입</label>
+            <input type="text" id="g-silver-buy" placeholder="예: 1.500" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label style="font-size:11px">백금 99% 매입</label>
+            <input type="text" id="g-platinum-buy" placeholder="예: 45.000" />
+          </div>
+        </div>
+        <button class="btn-primary" onclick="saveGoldPrice()">시세 저장</button>
+      </div>
+    </div>
+
     <div class="stats-grid" id="stats-grid"></div>
     <p class="settings-link" onclick="showLogin()">⚙ 연결 설정 변경</p>
   </div>
@@ -532,6 +578,7 @@ function loadStats(){
   api({action:'getStats'}).then(data=>{
     if(data.status==='ok')renderStats(data.data);
   });
+  loadGoldPrice();
 }
 
 function renderStats(stats){
@@ -849,8 +896,102 @@ function registerProduct(){
 }
 
 // ================================
-// 필터
+// 금 시세
 // ================================
+function loadGoldPrice(){
+  api({action:'getGoldPrice'}).then(data=>{
+    const el=document.getElementById('gold-price-display');
+    if(data.status==='ok'&&data.data){
+      const g=data.data;
+      const fmt=v=>v?Number(v).toLocaleString()+'원':'-';
+      el.innerHTML=`
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+          <div style="text-align:center">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:2px">순금 판매</div>
+            <div style="font-size:18px;font-weight:700;color:var(--gold)">${fmt(g.gold_sell)}</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:2px">순금 매입</div>
+            <div style="font-size:18px;font-weight:700;color:var(--text)">${fmt(g.gold_buy)}</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:2px">14K 매입</div>
+            <div style="font-size:14px;font-weight:500">${fmt(g.k14_buy)}</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:2px">18K 매입</div>
+            <div style="font-size:14px;font-weight:500">${fmt(g.k18_buy)}</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:2px">은수저 99%</div>
+            <div style="font-size:13px;font-weight:500">${fmt(g.silver_buy)}</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:2px">백금 99%</div>
+            <div style="font-size:13px;font-weight:500">${fmt(g.platinum_buy)}</div>
+          </div>
+        </div>
+        <div style="text-align:right;font-size:10px;color:var(--text3);margin-top:8px">기준시간: ${g.time||''}</div>`;
+    } else {
+      el.innerHTML='<div style="text-align:center;color:var(--text2);font-size:13px">오늘 시세가 없습니다</div>';
+    }
+  });
+}
+
+function toggleGoldInput(){
+  const el=document.getElementById('gold-input-form');
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function parseGoldMessage(){
+  const text=document.getElementById('gold-paste').value;
+  if(!text)return;
+
+  // 숫자 패턴 추출 (xxx.xxx 형식)
+  const nums=text.match(/\d{1,3}\.\d{3}/g)||[];
+
+  // 매입/판매 키워드로 찾기
+  const lines=text.split('\n');
+  lines.forEach(line=>{
+    const n=line.match(/\d{1,3}\.\d{3}/);
+    if(!n)return;
+    const val=n[0];
+    if(line.includes('판매')&&!line.includes('14')&&!line.includes('18')){
+      document.getElementById('g-gold-sell').value=val;
+    } else if(line.includes('매입')&&!line.includes('14')&&!line.includes('18')&&!line.includes('은')&&!line.includes('백금')){
+      document.getElementById('g-gold-buy').value=val;
+    } else if(line.includes('14')){
+      document.getElementById('g-k14-buy').value=val;
+    } else if(line.includes('18')){
+      document.getElementById('g-k18-buy').value=val;
+    } else if(line.includes('은')){
+      document.getElementById('g-silver-buy').value=val;
+    } else if(line.includes('백금')){
+      document.getElementById('g-platinum-buy').value=val;
+    }
+  });
+}
+
+function saveGoldPrice(){
+  const params={
+    action:'addGoldPrice',
+    gold_buy:document.getElementById('g-gold-buy').value,
+    gold_sell:document.getElementById('g-gold-sell').value,
+    k14_buy:document.getElementById('g-k14-buy').value,
+    k18_buy:document.getElementById('g-k18-buy').value,
+    silver_buy:document.getElementById('g-silver-buy').value,
+    platinum_buy:document.getElementById('g-platinum-buy').value,
+  };
+  if(!params.gold_sell){showToast('순금 판매가를 입력하세요');return;}
+  api(params).then(data=>{
+    if(data.status==='ok'){
+      showToast('✓ 시세 저장 완료');
+      document.getElementById('gold-input-form').style.display='none';
+      document.getElementById('gold-paste').value='';
+      loadGoldPrice();
+    }
+  });
+}
 function renderFilterBar(sheet){
   const el=document.getElementById('filter-bar');
   let html='<div class="filter-row">';
