@@ -653,6 +653,7 @@ function doLogin(){
     const auth=JSON.parse(cachedAuth);
     if(auth.key===key){
       userRole=auth.role;
+      userName=auth.name||'';
       cfg={url,key};
       localStorage.setItem('jw_admin_cfg',JSON.stringify(cfg));
 
@@ -690,7 +691,7 @@ function doLogin(){
       // 백그라운드에서 role 재확인
       fetch(url+'?key='+encodeURIComponent(key)+'&action=getRole')
         .then(r=>r.json()).then(rd=>{
-          if(rd.status==='ok') localStorage.setItem('jw_auth_cache',JSON.stringify({key,role:rd.role}));
+          if(rd.status==='ok') localStorage.setItem('jw_auth_cache',JSON.stringify({key,role:roleData.role,name:roleData.name||''}));
         }).catch(()=>{});
       return;
     }
