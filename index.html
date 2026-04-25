@@ -1231,7 +1231,10 @@ function filterListSearch(q){
       (p.title&&p.title.toLowerCase().includes(lq))||
       (p.artist&&p.artist.toLowerCase().includes(lq))||
       (p.mineral_type&&p.mineral_type.toLowerCase().includes(lq))||
-      (p.variety&&p.variety.toLowerCase().includes(lq))
+      (p.variety&&p.variety.toLowerCase().includes(lq))||
+      (p.order_ref&&p.order_ref.toLowerCase().includes(lq))||
+      (p.base_weight&&p.base_weight.toString().toLowerCase().includes(lq))||
+      (p.stone_info&&p.stone_info.toLowerCase().includes(lq))
     ).map(p=>({...p,selected:false}));
   }
   renderProductItems(filteredProducts);
