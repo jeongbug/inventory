@@ -178,6 +178,21 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .role-admin{background:#FFF3E0;color:#E65100}
 .role-staff{background:#E3F2FD;color:#1565C0}
 
+.order-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .2s}
+.order-card:hover{border-color:var(--border2)}
+.order-id{font-size:12px;font-family:monospace;color:var(--text3)}
+.order-customer{font-size:15px;font-weight:700;margin-top:2px}
+.order-factory{font-size:12px;color:var(--text2);margin-top:2px}
+.order-memo{font-size:12px;color:var(--text2);margin-top:4px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.order-status{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;margin-top:6px;font-weight:500}
+.status-주문접수{background:#E3F2FD;color:#1565C0}
+.status-제작중{background:#FFF3E0;color:#E65100}
+.status-완료대기{background:#E8F5E9;color:#2E7D32}
+.status-출고완료{background:#F3E5F5;color:#6A1B9A}
+.status-취소{background:#FFEBEE;color:#C62828}
+.status-유보{background:#F5F5F5;color:#616161}
+.order-photos{display:flex;gap:6px;margin-top:8px;overflow-x:auto}
+.order-photo{width:60px;height:60px;border-radius:var(--radius-sm);object-fit:cover;flex-shrink:0;background:var(--gold-pale)}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1714;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:500;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;font-family:'Noto Sans KR',sans-serif}
 .toast.show{opacity:1}
 </style>
@@ -218,7 +233,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <button class="nav-btn" onclick="switchNav('register')">등록</button>
     <button class="nav-btn" onclick="switchNav('list')">목록</button>
     <button class="nav-btn" onclick="switchNav('search')">검색</button>
-    <button class="nav-btn" onclick="switchNav('catalog')">카탈로그</button>
+    <button class="nav-btn" onclick="switchNav('orders')">주문</button>
+    <button class="nav-btn" onclick="switchNav('catalog')">카탈</button>
   </div>
 
   <!-- 홈 -->
@@ -369,7 +385,73 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div id="search-result"></div>
   </div>
 
-  <!-- 카탈로그 -->
+  <!-- 주문 관리 -->
+  <div class="view" id="view-orders">
+    <p class="page-title">주문 관리</p>
+
+    <!-- 상태 탭 -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px">
+      <button class="sheet-tab active" id="order-tab-active" onclick="selectOrderTab('active')">진행중</button>
+      <button class="sheet-tab" id="order-tab-done" onclick="selectOrderTab('done')">완료/출고</button>
+      <button class="sheet-tab" id="order-tab-all" onclick="selectOrderTab('all')">전체</button>
+      <button class="sheet-tab" id="order-tab-cancel" onclick="selectOrderTab('cancel')">취소/유보</button>
+    </div>
+
+    <button class="btn-primary" onclick="showOrderForm()" style="margin-bottom:12px">+ 새 주문 등록</button>
+
+    <div id="order-list"><div class="loading-state">불러오는 중...</div></div>
+  </div>
+
+  <!-- 주문 등록 폼 모달 -->
+  <div class="modal-bg" id="order-modal">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <button class="modal-close" onclick="closeOrderModal()">✕</button>
+      <p class="modal-title" id="order-modal-title">새 주문 등록</p>
+      <div id="order-modal-body">
+        <div class="form-group">
+          <label>고객 / 주문처</label>
+          <input type="text" id="order-customer" placeholder="거래처명 또는 손님 이름" />
+        </div>
+        <div class="form-group">
+          <label>제작 공장</label>
+          <select id="order-factory">
+            <option value="">선택...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>상태</label>
+          <select id="order-status">
+            <option value="주문접수">주문접수</option>
+            <option value="제작중">제작중</option>
+            <option value="완료대기">완료대기</option>
+            <option value="출고완료">출고완료</option>
+            <option value="취소">취소</option>
+            <option value="유보">유보</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>메모 / 주문내용</label>
+          <textarea id="order-memo" placeholder="모델번호, 스톤 내역, 특이사항 등"></textarea>
+        </div>
+        <div class="form-group">
+          <label>주문서 사진</label>
+          <div class="upload-area">
+            <span id="order-img-label">📷 주문서 사진</span>
+            <input type="file" accept="image/*" multiple onchange="handleOrderImages(this,'order')" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>완성 사진</label>
+          <div class="upload-area">
+            <span id="product-img-label">📷 완성 사진 (여러 장 가능)</span>
+            <input type="file" accept="image/*" multiple onchange="handleOrderImages(this,'product')" />
+          </div>
+        </div>
+        <button class="btn-primary" id="order-submit-btn" onclick="submitOrder()">등록하기</button>
+      </div>
+    </div>
+  </div>
   <div class="view" id="view-catalog">
     <p class="page-title">카탈로그</p>
 
@@ -650,13 +732,14 @@ function showLogin(){
 
 function switchNav(v){
   document.querySelectorAll('.nav-btn').forEach((b,i)=>
-    b.classList.toggle('active',['dashboard','register','list','search','catalog'][i]===v));
+    b.classList.toggle('active',['dashboard','register','list','search','orders','catalog'][i]===v));
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   if(v==='list')loadList();
   if(v==='dashboard')loadStats();
   if(v==='catalog')loadCatalog();
   if(v==='register'){loadStones();loadMaterials();}
+  if(v==='orders'){loadOrders();}
 }
 
 function loadStats(){
@@ -1231,10 +1314,7 @@ function filterListSearch(q){
       (p.title&&p.title.toLowerCase().includes(lq))||
       (p.artist&&p.artist.toLowerCase().includes(lq))||
       (p.mineral_type&&p.mineral_type.toLowerCase().includes(lq))||
-      (p.variety&&p.variety.toLowerCase().includes(lq))||
-      (p.order_ref&&p.order_ref.toLowerCase().includes(lq))||
-      (p.base_weight&&p.base_weight.toString().toLowerCase().includes(lq))||
-      (p.stone_info&&p.stone_info.toLowerCase().includes(lq))
+      (p.variety&&p.variety.toLowerCase().includes(lq))
     ).map(p=>({...p,selected:false}));
   }
   renderProductItems(filteredProducts);
@@ -1297,9 +1377,6 @@ function selectListSheet(el,sheet){
 function loadList(){
   const el=document.getElementById('product-list');
   el.innerHTML='<div class="loading-state">불러오는 중...</div>';
-  // 검색창 초기화
-  const searchEl=document.getElementById('list-search');
-  if(searchEl) searchEl.value='';
   api({action:'getAll',sheet:currentSheet}).then(data=>{
     if(data.status==='ok'){
       products=data.data.filter(p=>p.customer_id).map(p=>({...p,selected:false}));
@@ -1654,6 +1731,218 @@ function renderCatalogItems(items){
       </div>
     </div>`;
   }).join('');
+}
+
+// ================================
+// 주문 관리
+// ================================
+let orders=[];
+let orderImages={order:[],product:[]};
+let currentOrderTab='active';
+let editingOrderId=null;
+let factoriesCache=[];
+
+function loadFactories(){
+  api({action:'getFactories'}).then(data=>{
+    if(data.status==='ok'){
+      factoriesCache=data.data;
+      const sel=document.getElementById('order-factory');
+      if(!sel)return;
+      sel.innerHTML='<option value="">선택...</option>';
+      ['제품공장','체인/부속','스톤공장'].forEach(type=>{
+        const group=document.createElement('optgroup');
+        group.label=type;
+        factoriesCache.filter(f=>f.type===type).forEach(f=>{
+          const o=document.createElement('option');
+          o.value=f.name;o.textContent=f.name;
+          group.appendChild(o);
+        });
+        sel.appendChild(group);
+      });
+    }
+  });
+}
+
+function selectOrderTab(tab){
+  currentOrderTab=tab;
+  ['active','done','all','cancel'].forEach(t=>{
+    const btn=document.getElementById('order-tab-'+t);
+    if(btn)btn.classList.toggle('active',t===tab);
+  });
+  loadOrders();
+}
+
+function loadOrders(){
+  const el=document.getElementById('order-list');
+  el.innerHTML='<div class="loading-state">불러오는 중...</div>';
+  api({action:'getOrders'}).then(data=>{
+    if(data.status==='ok'){
+      orders=data.data;
+      let filtered=orders;
+      if(currentOrderTab==='active'){
+        filtered=orders.filter(o=>['주문접수','제작중','완료대기'].includes(o.status));
+      } else if(currentOrderTab==='done'){
+        filtered=orders.filter(o=>['출고완료'].includes(o.status));
+      } else if(currentOrderTab==='cancel'){
+        filtered=orders.filter(o=>['취소','유보'].includes(o.status));
+      }
+      renderOrders(filtered);
+    }
+  }).catch(()=>{
+    el.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div>불러오기 실패</div>';
+  });
+}
+
+function renderOrders(items){
+  const el=document.getElementById('order-list');
+  if(!items.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div>주문이 없습니다</div>';return;}
+  el.innerHTML=items.slice().reverse().map(o=>`
+    <div class="order-card" onclick="openOrderDetail('${o.order_id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="order-id">${o.order_id} · ${o.order_date||''}</div>
+          <div class="order-customer">${o.customer||''}</div>
+          <div class="order-factory">🏭 ${o.factory||'-'}</div>
+        </div>
+        <span class="order-status status-${o.status}">${o.status||''}</span>
+      </div>
+      ${o.memo?`<div class="order-memo">${o.memo}</div>`:''}
+      ${o.product_images?`
+        <div class="order-photos">
+          ${o.product_images.split(',').filter(Boolean).slice(0,3).map(img=>
+            `<img src="${img}" class="order-photo" onerror="this.style.display='none'" alt="">`
+          ).join('')}
+        </div>`:''}
+    </div>`).join('');
+}
+
+function showOrderForm(orderId=null){
+  editingOrderId=orderId;
+  orderImages={order:[],product:[]};
+  const title=document.getElementById('order-modal-title');
+  const btn=document.getElementById('order-submit-btn');
+  if(orderId){
+    const o=orders.find(x=>x.order_id===orderId);
+    if(o){
+      title.textContent='주문 수정';
+      btn.textContent='수정하기';
+      btn.onclick=()=>submitOrder(true);
+      document.getElementById('order-customer').value=o.customer||'';
+      document.getElementById('order-factory').value=o.factory||'';
+      document.getElementById('order-status').value=o.status||'주문접수';
+      document.getElementById('order-memo').value=o.memo||'';
+    }
+  } else {
+    title.textContent='새 주문 등록';
+    btn.textContent='등록하기';
+    btn.onclick=()=>submitOrder(false);
+    ['order-customer','order-memo'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('order-factory').value='';
+    document.getElementById('order-status').value='주문접수';
+    document.getElementById('order-img-label').textContent='📷 주문서 사진';
+    document.getElementById('product-img-label').textContent='📷 완성 사진';
+  }
+  loadFactories();
+  document.getElementById('order-modal').classList.add('open');
+}
+
+function handleOrderImages(inp,type){
+  if(!inp.files.length)return;
+  const files=Array.from(inp.files);
+  const labelId=type==='order'?'order-img-label':'product-img-label';
+  document.getElementById(labelId).textContent=`✓ ${files.length}개 선택됨`;
+  orderImages[type]=[];
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        const MAX=800;let w=img.width,h=img.height;
+        if(w>h){if(w>MAX){h=h*(MAX/w);w=MAX;}}
+        else{if(h>MAX){w=w*(MAX/h);h=MAX;}}
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        orderImages[type].push(canvas.toDataURL('image/jpeg',0.75));
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function submitOrder(isEdit=false){
+  const customer=document.getElementById('order-customer').value.trim();
+  if(!customer){showToast('고객/주문처를 입력하세요');return;}
+  const btn=document.getElementById('order-submit-btn');
+  btn.disabled=true;btn.textContent=isEdit?'수정 중...':'등록 중...';
+  const params={
+    customer,
+    factory:document.getElementById('order-factory').value,
+    status:document.getElementById('order-status').value,
+    memo:document.getElementById('order-memo').value,
+    order_image:orderImages.order.join(','),
+    product_images:orderImages.product.join(','),
+  };
+  if(isEdit){
+    params.action='updateOrder';params.order_id=editingOrderId;
+    const existing=orders.find(o=>o.order_id===editingOrderId);
+    if(existing&&!orderImages.order.length) params.order_image=existing.order_image||'';
+    if(existing&&!orderImages.product.length) params.product_images=existing.product_images||'';
+  } else {
+    params.action='addOrder';
+  }
+  api(params).then(data=>{
+    btn.disabled=false;
+    if(data.status==='ok'){
+      showToast(isEdit?'✓ 수정 완료':'✓ 주문 등록: '+(data.order_id||''));
+      closeOrderModal();loadOrders();
+    } else {
+      btn.textContent=isEdit?'수정하기':'등록하기';
+      showToast('오류: '+(data.message||'실패'));
+    }
+  }).catch(()=>{btn.disabled=false;btn.textContent=isEdit?'수정하기':'등록하기';showToast('실패');});
+}
+
+function openOrderDetail(orderId){
+  const o=orders.find(x=>x.order_id===orderId);if(!o)return;
+  const photos=o.product_images?o.product_images.split(',').filter(Boolean):[];
+  const orderImgs=o.order_image?o.order_image.split(',').filter(Boolean):[];
+  document.getElementById('modal-title').textContent=o.order_id;
+  document.getElementById('modal-body').innerHTML=`
+    ${photos.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">
+      ${photos.map(img=>`<img src="${img}" style="width:100%;height:80px;object-fit:cover;border-radius:var(--radius-sm)" onerror="this.style.display='none'" alt="">`).join('')}
+    </div>`:''}
+    <div class="detail-row"><span class="lbl">주문번호</span><span class="val" style="font-family:monospace">${o.order_id}</span></div>
+    <div class="detail-row"><span class="lbl">주문일</span><span class="val">${o.order_date||''}</span></div>
+    <div class="detail-row"><span class="lbl">고객</span><span class="val">${o.customer||''}</span></div>
+    <div class="detail-row"><span class="lbl">공장</span><span class="val">${o.factory||'-'}</span></div>
+    <div class="detail-row"><span class="lbl">상태</span><span class="val"><span class="order-status status-${o.status}">${o.status}</span></span></div>
+    ${o.memo?`<div style="margin-top:10px;font-size:13px;color:var(--text2);line-height:1.6;padding-bottom:10px;border-bottom:1px solid var(--border)">${o.memo}</div>`:''}
+    ${orderImgs.length?`<div style="margin-top:10px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">주문서</div>
+      <div style="display:flex;gap:6px;overflow-x:auto">${orderImgs.map(img=>`<img src="${img}" style="height:80px;border-radius:var(--radius-sm)" onerror="this.style.display='none'" alt="">`).join('')}</div>
+    </div>`:''}
+    <div class="modal-actions">
+      <button onclick="closeModal();showOrderForm('${o.order_id}')">수정</button>
+      <button onclick="quickStatusChange('${o.order_id}')">상태 변경</button>
+    </div>`;
+  document.getElementById('modal').classList.add('open');
+}
+
+function quickStatusChange(orderId){
+  const o=orders.find(x=>x.order_id===orderId);if(!o)return;
+  const statuses=['주문접수','제작중','완료대기','출고완료','취소','유보'];
+  const current=statuses.indexOf(o.status);
+  const next=statuses[(current+1)%statuses.length];
+  if(!confirm(`"${next}"(으)로 변경할까요?`))return;
+  api({action:'updateOrder',order_id:orderId,status:next}).then(data=>{
+    if(data.status==='ok'){o.status=next;closeModal();loadOrders();showToast('✓ '+next);}
+  });
+}
+
+function closeOrderModal(){
+  document.getElementById('order-modal').classList.remove('open');
+  editingOrderId=null;orderImages={order:[],product:[]};
 }
 
 function exportCatalog(){
