@@ -517,7 +517,8 @@ let filteredProducts = [];
 let searchResults = [];
 let adjVisible = false;
 let viewMode = 'list';
-
+let userName='';
+  
 const CATEGORIES = {
   'Rokuzan': ['목걸이','귀걸이','반지','브로치','팔찌','펜던트','변형'],
   'Own_Products': ['실버_목걸이','실버_귀걸이','실버_반지','실버_브로치','실버_팔찌','실버_펜던트','골드_목걸이','골드_귀걸이','골드_반지','골드_브로치','골드_팔찌','골드_펜던트','변형'],
@@ -701,6 +702,7 @@ function doLogin(){
     .then(r=>r.json()).then(roleData=>{
       if(roleData.status==='ok'){
         userRole=roleData.role;
+        userName=roleData.name||'';
         cfg={url,key};
         localStorage.setItem('jw_admin_cfg',JSON.stringify(cfg));
         localStorage.setItem('jw_auth_cache',JSON.stringify({key,role:roleData.role}));
@@ -1920,6 +1922,7 @@ function submitOrder(isEdit=false){
   const params={
     customer,
     factories:getSelectedFactories(),
+    created_by:userName,
     status:document.getElementById('order-status').value,
     memo:document.getElementById('order-memo').value,
     order_image:orderImages.order.join(','),
