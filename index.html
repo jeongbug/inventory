@@ -1592,6 +1592,7 @@ function openDetail(id){
     ${p.photo?`<img src="${p.photo}" style="width:100%;height:160px;object-fit:cover;border-radius:10px;margin-bottom:10px" onerror="this.style.display='none'" alt="">`:''}
     ${fields.map(f=>`<div class="detail-row"><span class="lbl">${f.l}</span><span class="val ${f.cls||''}">${f.v}</span></div>`).join('')}
     ${p.description?`<div style="margin-top:8px;font-size:12px;color:var(--text2);line-height:1.6;padding-bottom:8px;border-bottom:1px solid var(--border)">${p.description}</div>`:''}
+    ${!p.photo?`<div style="margin-top:8px;padding:10px;background:#FFF3E0;border-radius:var(--radius-sm);font-size:12px;color:#E65100">📷 사진 없음</div>`:''}
     <div class="modal-actions">
       ${userRole==='admin'?`
         <button onclick="toggleVisible('${p.customer_id}','retail')">소매 ${p.visible_retail==='Y'?'숨기기':'보이기'}</button>
@@ -1599,9 +1600,67 @@ function openDetail(id){
         <button onclick="editField('${p.customer_id}','sale_price','소비자가',${p.sale_price||0})">가격 수정</button>
       `:''}
       <button onclick="editField('${p.customer_id}','description','메모','${(p.description||'').replace(/'/g,"\\'")}')">메모 수정</button>
+      <button onclick="uploadPhotoForProduct('${p.customer_id}')">사진 업로드</button>
       ${userRole==='admin'?`<button class="btn-danger" onclick="deleteProduct('${p.customer_id}')">삭제</button>`:''}
+    </div>
+    <div id="photo-upload-area-${p.customer_id}" style="display:none;margin-top:10px">
+      <div class="upload-area">
+        <span id="photo-upload-label-${p.customer_id}">📷 사진 선택 (자동 압축)</span>
+        <input type="file" accept="image/*" onchange="handleProductPhotoUpload(this,'${p.customer_id}')" />
+        <img id="photo-upload-preview-${p.customer_id}" style="width:100%;max-height:120px;object-fit:cover;border-radius:var(--radius-sm);margin-top:8px;display:none" alt="" />
+      </div>
+      <button class="btn-primary" style="margin-top:8px" onclick="saveProductPhoto('${p.customer_id}')">사진 저장</button>
     </div>`;
   document.getElementById('modal').classList.add('open');
+}
+
+let pendingPhotoData={};
+
+function uploadPhotoForProduct(id){
+  const area=document.getElementById('photo-upload-area-'+id);
+  if(!area)return;
+  area.style.display=area.style.display==='none'?'block':'none';
+}
+
+function handleProductPhotoUpload(inp,id){
+  if(!inp.files[0])return;
+  const file=inp.files[0];
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      const MAX=800;
+      let w=img.width,h=img.height;
+      if(w>h){if(w>MAX){h=h*(MAX/w);w=MAX;}}
+      else{if(h>MAX){w=w*(MAX/h);h=MAX;}}
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      const compressed=canvas.toDataURL('image/jpeg',0.75);
+      pendingPhotoData[id]=compressed;
+      const prev=document.getElementById('photo-upload-preview-'+id);
+      if(prev){prev.src=compressed;prev.style.display='block';}
+      const label=document.getElementById('photo-upload-label-'+id);
+      if(label) label.textContent='✓ 사진 선택됨';
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveProductPhoto(id){
+  const photo=pendingPhotoData[id];
+  if(!photo){showToast('사진을 먼저 선택하세요');return;}
+  api({action:'updateProduct',sheet:currentSheet,id,photo})
+    .then(data=>{
+      if(data.status==='ok'){
+        const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
+        if(p) p.photo=photo;
+        delete pendingPhotoData[id];
+        showToast('✓ 사진 저장 완료');
+        openDetail(id);
+      }
+    });
 }
 
 function toggleVisible(id,channel){
