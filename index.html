@@ -343,21 +343,39 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
       </div>
     </div>
 
-    <div class="toolbar">
+    <!-- 재고상태 일괄 변경 패널 -->
+    <div class="adjust-panel" id="stock-panel" style="display:none;background:#E8F5E9;border-color:#A5D6A7">
+      <h3 style="color:#2E7D32">재고상태 일괄 변경</h3>
+      <div class="adjust-row">
+        <select id="stock-val">
+          <option value="재고있음">재고있음</option>
+          <option value="재고없음">재고없음</option>
+          <option value="단종">단종</option>
+        </select>
+        <button class="btn-adjust" style="background:#27AE60" onclick="applyStockChange()">적용</button>
+      </div>
+    </div>
+
+    <!-- 툴바 1행: 전체선택 + 뷰전환 + 새로고침 -->
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
       <input type="checkbox" class="check-all" id="sel-all" onchange="selectAll(this)" />
       <label for="sel-all" style="font-size:12px;cursor:pointer;color:var(--text2)">전체</label>
-      <div class="toolbar-right">
-        <button class="btn-sm" onclick="toggleAdjust()" id="adj-toggle">가격 조정</button>
-        <button class="btn-sm" onclick="batchVisible('retail','Y')">소매 노출</button>
-        <button class="btn-sm" onclick="batchVisible('retail','N')">소매 숨김</button>
-        <button class="btn-sm" onclick="batchVisible('wholesale','Y')">도매 노출</button>
-        <button class="btn-sm" onclick="batchVisible('wholesale','N')">도매 숨김</button>
+      <div style="margin-left:auto;display:flex;gap:4px;align-items:center">
         <button class="btn-sm" onclick="loadList()">↺</button>
         <div class="view-toggle">
           <button id="btn-list-view" class="active" onclick="setViewMode('list')">☰</button>
           <button id="btn-gallery-view" onclick="setViewMode('gallery')">⊞</button>
         </div>
       </div>
+    </div>
+    <!-- 툴바 2행: 일괄 기능 버튼들 -->
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+      <button class="btn-sm" onclick="toggleAdjust()" id="adj-toggle">가격</button>
+      <button class="btn-sm" onclick="toggleStockPanel()" id="stock-toggle">재고</button>
+      <button class="btn-sm" onclick="batchVisible('retail','Y')">소매▲</button>
+      <button class="btn-sm" onclick="batchVisible('retail','N')">소매▼</button>
+      <button class="btn-sm" onclick="batchVisible('wholesale','Y')">도매▲</button>
+      <button class="btn-sm" onclick="batchVisible('wholesale','N')">도매▼</button>
     </div>
     <div class="sel-count" id="sel-count" style="font-size:11px;color:var(--text2);margin-bottom:8px">0개 선택</div>
     <div id="product-list"><div class="loading-state">불러오는 중...</div></div>
@@ -1494,6 +1512,35 @@ function applyAdjust(){
     .then(data=>{
       if(data.status==='ok'){showToast('✓ '+data.updated+'개 가격 조정 완료');loadList();}
     });
+}
+
+function toggleStockPanel(){
+  if(userRole!=='admin'&&userRole!=='staff'){showToast('권한이 없습니다');return;}
+  const panel=document.getElementById('stock-panel');
+  const visible=panel.style.display==='none';
+  panel.style.display=visible?'block':'none';
+  document.getElementById('stock-toggle').textContent=visible?'닫기':'재고';
+  // 가격 패널 닫기
+  document.getElementById('adjust-panel').style.display='none';
+  document.getElementById('adj-toggle').textContent='가격';
+}
+
+function applyStockChange(){
+  const val=document.getElementById('stock-val').value;
+  const targets=filteredProducts.filter(p=>p.selected);
+  if(!targets.length){showToast('제품을 먼저 선택하세요');return;}
+  if(!confirm(`선택한 ${targets.length}개 제품의 재고상태를 "${val}"로 변경할까요?`))return;
+  let done=0;
+  targets.forEach(p=>{
+    api({action:'updateProduct',sheet:currentSheet,id:p.customer_id,stock_status:val})
+      .then(()=>{
+        done++;
+        if(done===targets.length){
+          showToast(`✓ ${done}개 재고상태 → ${val}`);
+          loadList();
+        }
+      });
+  });
 }
 
 function batchVisible(channel,val){
