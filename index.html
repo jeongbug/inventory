@@ -78,7 +78,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .toolbar{display:flex;gap:6px;margin-bottom:10px;align-items:center;flex-wrap:wrap}
 .check-all{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex-shrink:0}
 .toolbar-right{display:flex;gap:6px;margin-left:auto;align-items:center}
-.btn-sm{padding:6px 10px;font-size:11px;font-weight:500;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--panel);cursor:pointer;color:var(--text);font-family:'Noto Sans KR',sans-serif;transition:background .15s;white-space:nowrap}
+.btn-sm{padding:5px 8px;font-size:11px;font-weight:500;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--panel);cursor:pointer;color:var(--text);font-family:'Noto Sans KR',sans-serif;transition:background .15s;white-space:nowrap}
 .btn-sm:hover{background:var(--surface)}
 .sel-count{font-size:11px;color:var(--text2);white-space:nowrap}
 
@@ -159,7 +159,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 /* 모달 */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:none;align-items:flex-end;justify-content:center}
 .modal-bg.open{display:flex}
-.modal{background:var(--panel);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto}
+.modal{background:var(--panel);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto}
 .modal-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 14px}
 .modal-title{font-size:15px;font-weight:700;margin-bottom:12px}
 .modal-close{float:right;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);margin-top:-2px}
@@ -391,7 +391,7 @@ window._fbReady = true;
       </div>
     </div>
     <!-- 툴바 2행: 일괄 기능 버튼들 -->
-    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
       <button class="btn-sm" onclick="toggleAdjust()" id="adj-toggle">가격</button>
       <button class="btn-sm" onclick="toggleStockPanel()" id="stock-toggle">재고</button>
       <button class="btn-sm" onclick="batchVisible('retail','Y')">소매▲</button>
@@ -527,6 +527,13 @@ window._fbReady = true;
           <option value="sale_price">소비자가</option>
           <option value="wholesale_price">도매가</option>
           <option value="none">가격 숨김</option>
+        </select>
+      </div>
+      <div class="catalog-price-toggle">
+        <label>메모:</label>
+        <select id="catalog-memo-show" onchange="loadCatalog()">
+          <option value="show">표시</option>
+          <option value="hide">숨김</option>
         </select>
       </div>
       <button class="btn-catalog-export" onclick="exportCatalog()">PDF 저장</button>
@@ -678,7 +685,7 @@ function showToast(msg){
 }
 
 function api(params){
- const hasLargeData=(params.photo&&params.photo.startsWith('data:'))||(params.order_image&&params.order_image.startsWith('data:'))||(params.product_images&&params.product_images.startsWith('data:'))||(params.images&&params.images.startsWith('data:'));
+  const hasLargeData=params.photo||params.order_image||params.product_images||params.images;
   if(hasLargeData){
     return fetch(cfg.url+'?key='+encodeURIComponent(cfg.key),{
       method:'POST',
@@ -800,7 +807,11 @@ function switchNav(v){
     b.classList.toggle('active',['dashboard','register','list','search','orders','catalog'][i]===v));
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
-  if(v==='list')loadList();
+  if(v==='list'){
+    // 이미 데이터가 있으면 다시 불러오지 않음
+    if(!products.length) loadList();
+    else renderProductItems(filteredProducts);
+  }
   if(v==='dashboard')loadStats();
   if(v==='catalog')loadCatalog();
   if(v==='register'){loadStones();loadMaterials();}
@@ -1231,33 +1242,46 @@ function parseGoldMessage(){
 }
 
 function saveGoldPrice(){
+  const cached=localStorage.getItem('gold_price_cache');
+  const prev=cached?JSON.parse(cached):{};
+  const today=new Date().toLocaleDateString('ko-KR');
+  const isPrevToday=prev.date===today;
+
+  const getVal=(id,prevKey)=>{
+    const v=document.getElementById(id).value.trim();
+    if(v) return v.replace(/\./g,'');
+    // 빈값이면 오늘 이전 데이터 유지
+    return isPrevToday?(prev[prevKey]||'0'):'0';
+  };
+
   const params={
     action:'addGoldPrice',
     gold_buy:document.getElementById('g-gold-buy').value,
     gold_sell:document.getElementById('g-gold-sell').value,
-    k14_buy:document.getElementById('g-k14-buy').value,
-    k18_buy:document.getElementById('g-k18-buy').value,
-    silver_buy:document.getElementById('g-silver-buy').value,
-    platinum_buy:document.getElementById('g-platinum-buy').value,
+    k14_buy:getVal('g-k14-buy','k14_buy'),
+    k18_buy:getVal('g-k18-buy','k18_buy'),
+    silver_buy:getVal('g-silver-buy','silver_buy'),
+    platinum_buy:getVal('g-platinum-buy','platinum_buy'),
   };
   if(!params.gold_sell){showToast('순금 판매가를 입력하세요');return;}
+  if(!params.gold_buy){showToast('순금 매입가를 입력하세요');return;}
+
   api(params).then(data=>{
     if(data.status==='ok'){
       showToast('✓ 시세 저장 완료');
       document.getElementById('gold-input-form').style.display='none';
       document.getElementById('gold-paste').value='';
-      // 캐시 즉시 업데이트
-      const cacheData = {
-        date: new Date().toLocaleDateString('ko-KR'),
-        time: new Date().getHours().toString().padStart(2,'0')+':'+new Date().getMinutes().toString().padStart(2,'0'),
-        gold_buy: params.gold_buy.replace(/\./g,''),
-        gold_sell: params.gold_sell.replace(/\./g,''),
-        k14_buy: params.k14_buy.replace(/\./g,''),
-        k18_buy: params.k18_buy.replace(/\./g,''),
-        silver_buy: params.silver_buy.replace(/\./g,''),
-        platinum_buy: params.platinum_buy.replace(/\./g,'')
+      const cacheData={
+        date:today,
+        time:new Date().getHours().toString().padStart(2,'0')+':'+new Date().getMinutes().toString().padStart(2,'0'),
+        gold_buy:params.gold_buy.replace(/\./g,''),
+        gold_sell:params.gold_sell.replace(/\./g,''),
+        k14_buy:params.k14_buy,
+        k18_buy:params.k18_buy,
+        silver_buy:params.silver_buy,
+        platinum_buy:params.platinum_buy
       };
-      localStorage.setItem('gold_price_cache', JSON.stringify(cacheData));
+      localStorage.setItem('gold_price_cache',JSON.stringify(cacheData));
       loadGoldPrice();
     }
   });
@@ -1733,7 +1757,12 @@ function toggleVisible(id,channel){
   const params={action:'updateProduct',sheet:currentSheet,id};
   params[field]=newVal;
   api(params).then(data=>{
-    if(data.status==="ok"){p[field]=newVal;openDetail(id);showToast(`${channel==="retail"?"소매":"도매"} 노출 변경`);}
+    if(data.status==="ok"){
+      p[field]=newVal;
+      openDetail(id);
+      renderProductItems(filteredProducts);
+      showToast(`${channel==="retail"?"소매":"도매"} 노출 변경`);
+    }
   });
 }
 
@@ -1744,11 +1773,10 @@ function editField(id,field,label,current){
   params[field]=val;
   api(params).then(data=>{
     if(data.status==='ok'){
-      // 해당 제품 데이터 업데이트
       const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
       if(p) p[field]=val;
-      // 모달 유지하면서 내용 업데이트
       openDetail(id);
+      renderProductItems(filteredProducts);
       showToast('✓ 수정 완료');
     }
   });
@@ -1895,6 +1923,7 @@ function renderCatalog(){loadCatalog();}
 function renderCatalogItems(items){
   const el=document.getElementById('catalog-grid');
   const priceType=document.getElementById('catalog-price-type').value;
+  const memoShow=document.getElementById('catalog-memo-show')?.value||'show';
   if(!items.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">💍</div>노출중인 제품이 없습니다</div>';return;}
   el.innerHTML=items.map(p=>{
     let price=0;
@@ -1913,7 +1942,7 @@ function renderCatalogItems(items){
         <div class="catalog-id">No. ${p.customer_id}</div>
         <div class="catalog-cat">${p.category||''} ${p.main_stone?'— '+p.main_stone:''}</div>
         ${priceType!=='none'?`<div class="catalog-price">₩${Number(price).toLocaleString()}</div>`:''}
-        ${p.description?`<div class="catalog-note">${p.description}</div>`:''}
+        ${memoShow==='show'&&p.description?`<div class="catalog-note">${p.description}</div>`:''}
       </div>
     </div>`;
   }).join('');
