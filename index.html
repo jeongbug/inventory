@@ -197,6 +197,28 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .toast.show{opacity:1}
 </style>
 </head>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/12.12.1/firebase-storage.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCpGu5m48j1BkjDvj1uY5_iue5hUIxoLwM",
+  authDomain: "jewelry-stock.firebaseapp.com",
+  projectId: "jewelry-stock",
+  storageBucket: "jewelry-stock.firebasestorage.app",
+  messagingSenderId: "750041168474",
+  appId: "1:750041168474:web:6d89b163354bcb1e1b7663"
+};
+
+const app = initializeApp(firebaseConfig);
+const storage = getStorage(app);
+
+window._fbStorage = storage;
+window._fbRef = ref;
+window._fbUploadBytes = uploadBytes;
+window._fbGetDownloadURL = getDownloadURL;
+window._fbReady = true;
+</script>
 <body>
 <div id="app">
 
@@ -1622,47 +1644,26 @@ function openDetail(id){
   document.getElementById('modal').classList.add('open');
 }
 
-// Firebase Storage 설정
-const firebaseConfig = {
-  apiKey: "AIzaSyCpGu5m48j1BkjDvj1uY5_iue5hUIxoLwM",
-  authDomain: "jewelry-stock.firebaseapp.com",
-  projectId: "jewelry-stock",
-  storageBucket: "jewelry-stock.firebasestorage.app",
-  messagingSenderId: "750041168474",
-  appId: "1:750041168474:web:6d89b163354bcb1e1b7663"
-};
 
-let firebaseApp = null;
-let firebaseStorage = null;
-
-async function initFirebase(){
-  if(firebaseApp) return true;
-  try {
-    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js');
-    const { getStorage, ref, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/12.12.1/firebase-storage.js');
-    firebaseApp = initializeApp(firebaseConfig);
-    firebaseStorage = { getStorage, ref, uploadBytes, getDownloadURL, storage: getStorage(firebaseApp) };
-    return true;
-  } catch(e) {
-    console.error('Firebase 초기화 실패', e);
-    return false;
-  }
-}
+let pendingPhotoData={};
 
 async function uploadToFirebase(base64Data, fileName){
-  const ok = await initFirebase();
-  if(!ok) throw new Error('Firebase 초기화 실패');
-  const { ref, uploadBytes, getDownloadURL, storage } = firebaseStorage;
-  // base64를 Blob으로 변환
-  const base64 = base64Data.split(',')[1];
-  const binary = atob(base64);
-  const array = new Uint8Array(binary.length);
+  // 최대 3초 대기
+  let waited=0;
+  while(!window._fbReady && waited<3000){
+    await new Promise(r=>setTimeout(r,100));
+    waited+=100;
+  }
+  if(!window._fbReady) throw new Error('Firebase 로딩 실패');
+
+  const base64=base64Data.split(',')[1];
+  const binary=atob(base64);
+  const array=new Uint8Array(binary.length);
   for(let i=0;i<binary.length;i++) array[i]=binary.charCodeAt(i);
-  const blob = new Blob([array], {type:'image/jpeg'});
-  const storageRef = ref(storage, 'products/'+fileName);
-  await uploadBytes(storageRef, blob);
-  const url = await getDownloadURL(storageRef);
-  return url;
+  const blob=new Blob([array],{type:'image/jpeg'});
+  const storageRef=window._fbRef(window._fbStorage,'products/'+fileName);
+  await window._fbUploadBytes(storageRef,blob);
+  return await window._fbGetDownloadURL(storageRef);
 }
 
 function uploadPhotoForProduct(id){
