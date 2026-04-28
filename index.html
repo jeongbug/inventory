@@ -2224,8 +2224,8 @@ function renderOrders(items){
           ${o.memo?`<div style="font-size:12px;color:var(--text2);margin-top:3px">${o.memo}</div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-          <button class="btn-sm" onclick="showOrderItemForm('${o.order_id}')">+ 제품</button>
-          <button class="btn-sm" onclick="showOrderForm('${o.order_id}')">수정</button>
+          <button class="btn-sm" onclick="showOrderForm('${o.order_id}')">주문내역 수정</button>
+          <button class="btn-sm" onclick="showOrderItemForm('${o.order_id}')">+ 제품 추가</button>
           <button class="btn-sm" style="color:var(--red);border-color:#F5C6C6" onclick="deleteOrder('${o.order_id}')">삭제</button>
         </div>
       </div>
