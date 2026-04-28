@@ -2274,25 +2274,11 @@ function renderOrders(items){
         </div>`).join('')
       :`<div style="text-align:center;color:var(--text3);font-size:12px;padding:10px">제품을 추가해 주세요</div>`}
       
-      <!-- 주문 전체 상태 -->
+      <!-- 주문 전체 상태 (자동 계산) -->
       <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-        <span style="font-size:11px;color:var(--text3)">주문 전체:</span>
-        <select onchange="changeOrderStatusDirect('${o.order_id}',this.value)"
-          style="padding:4px 8px;font-size:11px;font-weight:600;border-radius:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;outline:none;border:none;
-          ${o.status==='주문접수'?'background:#E3F2FD;color:#1565C0':
-            o.status==='제작중'?'background:#FFF3E0;color:#E65100':
-            o.status==='완료대기'?'background:#E8F5E9;color:#2E7D32':
-            o.status==='출고완료'?'background:#F3E5F5;color:#6A1B9A':
-            o.status==='취소'?'background:#FFEBEE;color:#C62828':
-            'background:#F5F5F5;color:#616161'}">
-          <option value="주문접수" ${o.status==='주문접수'?'selected':''}>주문접수</option>
-          <option value="제작중" ${o.status==='제작중'?'selected':''}>제작중</option>
-          <option value="완료대기" ${o.status==='완료대기'?'selected':''}>완료대기</option>
-          <option value="출고완료" ${o.status==='출고완료'?'selected':''}>출고완료</option>
-          <option value="취소" ${o.status==='취소'?'selected':''}>취소</option>
-          <option value="유보" ${o.status==='유보'?'selected':''}>유보</option>
-        </select>
-        <button class="btn-sm" onclick="reorderFromOrder('${o.order_id}')">재주문</button>
+        <span style="font-size:11px;color:var(--text3)">전체 상태:</span>
+        <span class="order-status status-${o.status}">${o.status}</span>
+        <button class="btn-sm" onclick="reorderFromOrder('${o.order_id}')">전체 재주문</button>
       </div>
     </div>`;
   }).join('');
@@ -2561,11 +2547,43 @@ async function submitOrderItem(){
   btn.disabled=false;btn.textContent=editingItemId?'수정하기':'추가하기';
 }
 
+function calcOrderStatus(orderId){
+  const items=orderItems.filter(x=>x.order_id===orderId);
+  if(!items.length) return '주문접수';
+  const statuses=items.map(x=>x.status);
+  if(statuses.every(s=>s==='취소')) return '취소';
+  const active=statuses.filter(s=>s!=='취소');
+  if(!active.length) return '취소';
+  if(active.every(s=>s==='출고완료')) return '출고완료';
+  const priority=['주문접수','제작중','완료대기','유보','출고완료'];
+  for(const p of priority){if(active.includes(p)) return p;}
+  return '주문접수';
+}
+
+function getFilteredOrders(){
+  let filtered=orders;
+  if(currentOrderTab==='active') filtered=orders.filter(o=>['주문접수','제작중','완료대기'].includes(o.status));
+  else if(currentOrderTab==='done') filtered=orders.filter(o=>o.status==='출고완료');
+  else if(currentOrderTab==='cancel') filtered=orders.filter(o=>['취소','유보'].includes(o.status));
+  return filtered;
+}
+
 function changeItemStatusDirect(itemId, orderId, newStatus){
   api({action:'updateOrderItem',item_id:itemId,status:newStatus}).then(data=>{
     if(data.status==='ok'){
       const item=orderItems.find(x=>x.item_id===itemId);
       if(item) item.status=newStatus;
+      
+      // 주문 전체 상태 자동 계산
+      const newOrderStatus=calcOrderStatus(orderId);
+      const o=orders.find(x=>x.order_id===orderId);
+      if(o && o.status!==newOrderStatus){
+        o.status=newOrderStatus;
+        api({action:'updateOrder',order_id:orderId,status:newOrderStatus});
+      }
+      
+      // 전체 새로고침 없이 목록만 다시 렌더
+      renderOrders(getFilteredOrders());
       showToast('✓ '+newStatus);
     }
   });
@@ -2576,6 +2594,7 @@ function changeOrderStatusDirect(orderId, newStatus){
     if(data.status==='ok'){
       const o=orders.find(x=>x.order_id===orderId);
       if(o) o.status=newStatus;
+      renderOrders(getFilteredOrders());
       showToast('✓ '+newStatus);
     }
   });
