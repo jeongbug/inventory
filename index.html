@@ -2559,11 +2559,28 @@ function calcOrderStatus(orderId){
 }
 
 function getFilteredOrders(){
-  let filtered=orders;
-  if(currentOrderTab==='active') filtered=orders.filter(o=>['주문접수','제작중','완료대기'].includes(o.status));
-  else if(currentOrderTab==='done') filtered=orders.filter(o=>o.status==='출고완료');
-  else if(currentOrderTab==='cancel') filtered=orders.filter(o=>['취소','유보'].includes(o.status));
-  return filtered;
+  if(currentOrderTab==='all') return orders;
+  
+  return orders.filter(o=>{
+    const items=orderItems.filter(x=>x.order_id===o.order_id);
+    
+    if(currentOrderTab==='active'){
+      // 하나라도 진행중인 아이템이 있으면 진행중 탭에 표시
+      if(!items.length) return ['주문접수','제작중','완료대기'].includes(o.status);
+      return items.some(i=>['주문접수','제작중','완료대기'].includes(i.status));
+    }
+    if(currentOrderTab==='done'){
+      // 모든 아이템이 출고완료이거나 취소일 때만 완료 탭
+      if(!items.length) return o.status==='출고완료';
+      const active=items.filter(i=>i.status!=='취소');
+      return active.length>0 && active.every(i=>i.status==='출고완료');
+    }
+    if(currentOrderTab==='cancel'){
+      if(!items.length) return ['취소','유보'].includes(o.status);
+      return items.every(i=>['취소','유보'].includes(i.status));
+    }
+    return true;
+  });
 }
 
 function changeItemStatusDirect(itemId, orderId, newStatus){
@@ -2672,6 +2689,7 @@ function closeOrderItemModal(){
   document.getElementById('order-item-modal').classList.remove('open');
   editingItemId=null;
   itemImages={order:[],product:[]};
+  loadOrders();
 }
 
 function exportCatalog(){
