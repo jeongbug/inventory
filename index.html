@@ -476,7 +476,8 @@ window._fbReady = true;
 
     <!-- 상태 탭 -->
     <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px">
-      <button class="sheet-tab active" id="order-tab-active" onclick="selectOrderTab('active')">진행중</button>
+      <button class="sheet-tab active" id="order-tab-waiting" onclick="selectOrderTab('waiting')">접수대기</button>
+      <button class="sheet-tab" id="order-tab-active" onclick="selectOrderTab('active')">진행중</button>
       <button class="sheet-tab" id="order-tab-done" onclick="selectOrderTab('done')">완료/출고</button>
       <button class="sheet-tab" id="order-tab-cancel" onclick="selectOrderTab('cancel')">취소/유보</button>
       <button class="sheet-tab" id="order-tab-all" onclick="selectOrderTab('all')">전체</button>
@@ -2150,7 +2151,7 @@ function renderCatalogItems(items){
 // ================================
 let orders=[];
 let orderItems=[];
-let currentOrderTab='active';
+let currentOrderTab='waiting';
 let editingOrderId=null;
 let editingItemId=null;
 let itemImages={order:[],product:[]};
@@ -2171,7 +2172,7 @@ function loadFactories(selectedFactories=[]){
 
 function selectOrderTab(tab){
   currentOrderTab=tab;
-  ['active','done','cancel','all'].forEach(t=>{
+  ['waiting','active','done','cancel','all'].forEach(t=>{
     const btn=document.getElementById('order-tab-'+t);
     if(btn)btn.classList.toggle('active',t===tab);
   });
@@ -2560,17 +2561,19 @@ function calcOrderStatus(orderId){
 
 function getFilteredOrders(){
   if(currentOrderTab==='all') return orders;
-  
+
   return orders.filter(o=>{
     const items=orderItems.filter(x=>x.order_id===o.order_id);
-    
+
+    if(currentOrderTab==='waiting'){
+      if(!items.length) return o.status==='주문접수';
+      return items.every(i=>i.status==='주문접수');
+    }
     if(currentOrderTab==='active'){
-      // 하나라도 진행중인 아이템이 있으면 진행중 탭에 표시
-      if(!items.length) return ['주문접수','제작중','완료대기'].includes(o.status);
-      return items.some(i=>['주문접수','제작중','완료대기'].includes(i.status));
+      if(!items.length) return ['제작중','완료대기'].includes(o.status);
+      return items.some(i=>['제작중','완료대기'].includes(i.status));
     }
     if(currentOrderTab==='done'){
-      // 모든 아이템이 출고완료이거나 취소일 때만 완료 탭
       if(!items.length) return o.status==='출고완료';
       const active=items.filter(i=>i.status!=='취소');
       return active.length>0 && active.every(i=>i.status==='출고완료');
