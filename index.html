@@ -1346,27 +1346,25 @@ function parseGoldMessage(){
   const text=document.getElementById('gold-paste').value;
   if(!text)return;
 
-  // 숫자 패턴 추출 (xxx.xxx 형식)
-  const nums=text.match(/\d{1,3}\.\d{3}/g)||[];
-
-  // 매입/판매 키워드로 찾기
   const lines=text.split('\n');
   lines.forEach(line=>{
-    const n=line.match(/\d{1,3}\.\d{3}/);
+    const n=line.match(/[\d,]+\.[\d]+/);
     if(!n)return;
     const val=n[0];
-    if(line.includes('판매')&&!line.includes('14')&&!line.includes('18')){
-      document.getElementById('g-gold-sell').value=val;
-    } else if(line.includes('매입')&&!line.includes('14')&&!line.includes('18')&&!line.includes('은')&&!line.includes('백금')){
-      document.getElementById('g-gold-buy').value=val;
-    } else if(line.includes('14')){
+    const l=line.trim();
+    
+    if(/14K?\s*매입/i.test(l)){
       document.getElementById('g-k14-buy').value=val;
-    } else if(line.includes('18')){
+    } else if(/18K?\s*매입/i.test(l)){
       document.getElementById('g-k18-buy').value=val;
-    } else if(line.includes('은')){
-      document.getElementById('g-silver-buy').value=val;
-    } else if(line.includes('백금')){
+    } else if(/백금/.test(l)){
       document.getElementById('g-platinum-buy').value=val;
+    } else if(/은/.test(l)){
+      document.getElementById('g-silver-buy').value=val;
+    } else if(/판매/.test(l)){
+      document.getElementById('g-gold-sell').value=val;
+    } else if(/매입/.test(l)){
+      document.getElementById('g-gold-buy').value=val;
     }
   });
 }
@@ -2618,7 +2616,20 @@ function deleteOrder(orderId){
 function deleteOrderItem(itemId,orderId){
   if(!confirm('삭제할까요?'))return;
   api({action:'deleteOrderItem',item_id:itemId}).then(data=>{
-    if(data.status==='ok'){showToast('✓ 삭제 완료');loadOrders();}
+    if(data.status==='ok'){
+      // 캐시에서 삭제
+      orderItems=orderItems.filter(x=>x.item_id!==itemId);
+      // 전체 상태 재계산
+      const newOrderStatus=calcOrderStatus(orderId);
+      const o=orders.find(x=>x.order_id===orderId);
+      if(o && o.status!==newOrderStatus){
+        o.status=newOrderStatus;
+        api({action:'updateOrder',order_id:orderId,status:newOrderStatus});
+      }
+      // 전체 새로고침 없이 렌더만
+      renderOrders(getFilteredOrders());
+      showToast('✓ 삭제 완료');
+    }
   });
 }
 
