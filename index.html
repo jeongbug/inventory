@@ -2183,9 +2183,16 @@ function selectOrderTab(tab){
 function loadOrders(){
   const el=document.getElementById('order-list');
   el.innerHTML='<div class="loading-state">불러오는 중...</div>';
-  api({action:'getOrders'}).then(data=>{
-    if(data.status==='ok'){
-      orders=data.data;
+  
+  // 주문과 아이템을 동시에 불러오기
+  Promise.all([
+    api({action:'getOrders'}),
+    api({action:'getOrderItems'})
+  ]).then(([ordersData, itemsData])=>{
+    if(ordersData.status==='ok'){
+      orders=ordersData.data;
+      orderItems=itemsData.status==='ok'?itemsData.data:[];
+      
       let filtered=orders;
       if(currentOrderTab==='active'){
         filtered=orders.filter(o=>['주문접수','제작중','완료대기'].includes(o.status));
@@ -2204,18 +2211,89 @@ function loadOrders(){
 function renderOrders(items){
   const el=document.getElementById('order-list');
   if(!items.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div>주문이 없습니다</div>';return;}
-  el.innerHTML=items.slice().reverse().map(o=>`
-    <div class="order-card" onclick="openOrderDetail('${o.order_id}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+  
+  el.innerHTML=items.slice().reverse().map(o=>{
+    const oItems=orderItems.filter(x=>x.order_id===o.order_id);
+    return `
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px">
+      <!-- 주문 헤더 -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
         <div>
-          <div class="order-id">${o.order_id} · ${o.order_date||''}</div>
-          <div class="order-customer">${o.customer||''}</div>
-          ${o.created_by?`<div style="font-size:11px;color:var(--text3)">담당: ${o.created_by}</div>`:''}
+          <div style="font-size:15px;font-weight:700">${o.customer||''}</div>
+          <div style="font-size:11px;color:var(--text3)">${o.order_id} · ${o.order_date||''} ${o.created_by?'· '+o.created_by:''}</div>
+          ${o.memo?`<div style="font-size:12px;color:var(--text2);margin-top:3px">${o.memo}</div>`:''}
         </div>
-        <span class="order-status status-${o.status}">${o.status||''}</span>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          <button class="btn-sm" onclick="showOrderItemForm('${o.order_id}')">+ 제품</button>
+          <button class="btn-sm" onclick="showOrderForm('${o.order_id}')">수정</button>
+        </div>
       </div>
-      ${o.memo?`<div class="order-memo">${o.memo}</div>`:''}
-    </div>`).join('');
+      
+      <!-- 제품 목록 -->
+      ${oItems.length?oItems.map(item=>`
+        <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-bottom:6px;background:var(--surface)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600">${item.factory||''} ${item.model_no?'<span style="color:var(--gold)">'+item.model_no+'</span>':''}</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:1px">
+                ${item.work_type?item.work_type+' · ':''}${item.category||''}${item.base_material?' / '+item.base_material:''}${item.plating&&item.plating!=='없음'?' / '+item.plating:''}
+              </div>
+              ${item.stone_info?`<div style="font-size:11px;color:var(--text2)">${item.stone_info}</div>`:''}
+              ${item.due_date?`<div style="font-size:11px;color:#1565C0">📅 ${item.due_date}</div>`:''}
+              ${item.memo?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${item.memo}</div>`:''}
+              ${item.product_images?`
+                <div style="display:flex;gap:4px;margin-top:6px;overflow-x:auto">
+                  ${item.product_images.split(',').filter(Boolean).map(img=>`<img src="${img}" style="height:50px;width:50px;object-fit:cover;border-radius:4px;cursor:pointer;flex-shrink:0" onclick="openRefImage('${img}')" onerror="this.style.display='none'" alt="">`).join('')}
+                </div>`:''}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-items:flex-end">
+              <!-- 상태 드롭다운 -->
+              <select onchange="changeItemStatusDirect('${item.item_id}','${o.order_id}',this.value)" 
+                style="padding:4px 6px;font-size:11px;font-weight:600;border-radius:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;outline:none;border:none;
+                ${item.status==='주문접수'?'background:#E3F2FD;color:#1565C0':
+                  item.status==='제작중'?'background:#FFF3E0;color:#E65100':
+                  item.status==='완료대기'?'background:#E8F5E9;color:#2E7D32':
+                  item.status==='출고완료'?'background:#F3E5F5;color:#6A1B9A':
+                  item.status==='취소'?'background:#FFEBEE;color:#C62828':
+                  'background:#F5F5F5;color:#616161'}">
+                <option value="주문접수" ${item.status==='주문접수'?'selected':''}>주문접수</option>
+                <option value="제작중" ${item.status==='제작중'?'selected':''}>제작중</option>
+                <option value="완료대기" ${item.status==='완료대기'?'selected':''}>완료대기</option>
+                <option value="출고완료" ${item.status==='출고완료'?'selected':''}>출고완료</option>
+                <option value="취소" ${item.status==='취소'?'selected':''}>취소</option>
+                <option value="유보" ${item.status==='유보'?'selected':''}>유보</option>
+              </select>
+              <div style="display:flex;gap:4px">
+                <button class="btn-sm" onclick="showOrderItemForm('${o.order_id}','${item.item_id}')">수정</button>
+                <button class="btn-sm" style="color:var(--red);border-color:#F5C6C6" onclick="deleteOrderItem('${item.item_id}','${o.order_id}')">삭제</button>
+              </div>
+            </div>
+          </div>
+        </div>`).join('')
+      :`<div style="text-align:center;color:var(--text3);font-size:12px;padding:10px">제품을 추가해 주세요</div>`}
+      
+      <!-- 주문 전체 상태 -->
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+        <span style="font-size:11px;color:var(--text3)">주문 전체:</span>
+        <select onchange="changeOrderStatusDirect('${o.order_id}',this.value)"
+          style="padding:4px 8px;font-size:11px;font-weight:600;border-radius:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;outline:none;border:none;
+          ${o.status==='주문접수'?'background:#E3F2FD;color:#1565C0':
+            o.status==='제작중'?'background:#FFF3E0;color:#E65100':
+            o.status==='완료대기'?'background:#E8F5E9;color:#2E7D32':
+            o.status==='출고완료'?'background:#F3E5F5;color:#6A1B9A':
+            o.status==='취소'?'background:#FFEBEE;color:#C62828':
+            'background:#F5F5F5;color:#616161'}">
+          <option value="주문접수" ${o.status==='주문접수'?'selected':''}>주문접수</option>
+          <option value="제작중" ${o.status==='제작중'?'selected':''}>제작중</option>
+          <option value="완료대기" ${o.status==='완료대기'?'selected':''}>완료대기</option>
+          <option value="출고완료" ${o.status==='출고완료'?'selected':''}>출고완료</option>
+          <option value="취소" ${o.status==='취소'?'selected':''}>취소</option>
+          <option value="유보" ${o.status==='유보'?'selected':''}>유보</option>
+        </select>
+        <button class="btn-sm" onclick="reorderFromOrder('${o.order_id}')">재주문</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function showOrderForm(orderId=null){
@@ -2459,69 +2537,44 @@ async function submitOrderItem(){
   btn.disabled=false;btn.textContent=editingItemId?'수정하기':'추가하기';
 }
 
-function changeItemStatus(itemId, orderId, current){
-  const statuses=['주문접수','제작중','완료대기','출고완료','취소','유보'];
-  const selected=prompt(
-    `현재 상태: ${current}\n\n변경할 상태 번호:\n` +
-    statuses.map((s,i)=>`${i+1}. ${s}`).join('\n')
-  );
-  if(!selected)return;
-  const idx=parseInt(selected)-1;
-  if(isNaN(idx)||idx<0||idx>=statuses.length){showToast('올바른 번호를 입력하세요');return;}
-  const next=statuses[idx];
-  api({action:'updateOrderItem',item_id:itemId,status:next}).then(data=>{
+function changeItemStatusDirect(itemId, orderId, newStatus){
+  api({action:'updateOrderItem',item_id:itemId,status:newStatus}).then(data=>{
     if(data.status==='ok'){
       const item=orderItems.find(x=>x.item_id===itemId);
-      if(item) item.status=next;
-      const o=orders.find(x=>x.order_id===orderId);
-      if(o) renderOrderDetail(o,orderItems);
-      showToast('✓ '+next);
+      if(item) item.status=newStatus;
+      showToast('✓ '+newStatus);
     }
   });
 }
 
+function changeOrderStatusDirect(orderId, newStatus){
+  api({action:'updateOrder',order_id:orderId,status:newStatus}).then(data=>{
+    if(data.status==='ok'){
+      const o=orders.find(x=>x.order_id===orderId);
+      if(o) o.status=newStatus;
+      showToast('✓ '+newStatus);
+    }
+  });
+}
+
+function changeItemStatus(itemId, orderId, current){}
+function quickStatusChange(orderId){}
+
 function deleteOrderItem(itemId,orderId){
   if(!confirm('삭제할까요?'))return;
   api({action:'deleteOrderItem',item_id:itemId}).then(data=>{
-    if(data.status==='ok'){showToast('✓ 삭제 완료');openOrderDetail(orderId);}
+    if(data.status==='ok'){showToast('✓ 삭제 완료');loadOrders();}
   });
 }
 
 function reorderFromOrder(orderId){
   const o=orders.find(x=>x.order_id===orderId);
   if(!o)return;
-  closeOrderDetailModal();
   showOrderForm();
   setTimeout(()=>{
     document.getElementById('order-customer').value=o.customer||'';
     document.getElementById('order-memo').value='재주문 (원본: '+orderId+')';
   },100);
-}
-
-function quickStatusChange(orderId){
-  const o=orders.find(x=>x.order_id===orderId);if(!o)return;
-  const statuses=['주문접수','제작중','완료대기','출고완료','취소','유보'];
-  const current=o.status;
-
-  // 선택 팝업
-  const selected=prompt(
-    `현재 상태: ${current}\n\n변경할 상태 번호를 입력하세요:\n` +
-    statuses.map((s,i)=>`${i+1}. ${s}`).join('\n')
-  );
-  if(!selected)return;
-  const idx=parseInt(selected)-1;
-  if(isNaN(idx)||idx<0||idx>=statuses.length){showToast('올바른 번호를 입력하세요');return;}
-  const next=statuses[idx];
-  if(next===current){showToast('같은 상태예요');return;}
-
-  api({action:'updateOrder',order_id:orderId,status:next}).then(data=>{
-    if(data.status==='ok'){
-      o.status=next;
-      closeOrderDetailModal();
-      loadOrders();
-      showToast('✓ '+next);
-    }
-  });
 }
 
 function closeOrderModal(){
