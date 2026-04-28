@@ -1453,9 +1453,24 @@ function updateFilterOptions(sheet){
     if(sEl) sizes.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sEl.appendChild(o);});
   }
   if(sheet==='Own_Products'){
-    const factories=[...new Set(products.map(p=>p.factory_id).filter(Boolean))].sort();
     const fEl=document.getElementById('f-factory');
-    if(fEl) factories.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;fEl.appendChild(o);});
+    if(fEl){
+      // 이미 로드된 factoriesCache 사용, 없으면 API 호출
+      if(factoriesCache.length){
+        factoriesCache.filter(f=>f.type==='제품공장').forEach(f=>{
+          const o=document.createElement('option');o.value=f.name;o.textContent=f.name;fEl.appendChild(o);
+        });
+      } else {
+        api({action:'getFactories'}).then(data=>{
+          if(data.status==='ok'){
+            factoriesCache=data.data;
+            factoriesCache.filter(f=>f.type==='제품공장').forEach(f=>{
+              const o=document.createElement('option');o.value=f.name;o.textContent=f.name;fEl.appendChild(o);
+            });
+          }
+        });
+      }
+    }
   }
   if(sheet==='Gemstones'){
     const minerals=[...new Set(products.map(p=>p.mineral_type).filter(Boolean))].sort();
