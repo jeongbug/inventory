@@ -1553,29 +1553,28 @@ function updateFilterOptions(sheet){
 function getFilterVal(id){const el=document.getElementById(id);return el?el.value:'';}
 
 function filterListSearch(q){
-  if(!q){
-    filteredProducts=[...products].map(p=>({...p,selected:false}));
-  } else {
-    const lq=q.toLowerCase();
-    filteredProducts=products.filter(p=>
-      (p.customer_id&&p.customer_id.toString().toLowerCase().includes(lq))||
-      (p.factory_id&&p.factory_id.toString().toLowerCase().includes(lq))||
-      (p.main_stone&&p.main_stone.toLowerCase().includes(lq))||
-      (p.sub_stone&&p.sub_stone.toLowerCase().includes(lq))||
-      (p.description&&p.description.toLowerCase().includes(lq))||
-      (p.category&&p.category.toLowerCase().includes(lq))||
-      (p.title&&p.title.toLowerCase().includes(lq))||
-      (p.artist&&p.artist.toLowerCase().includes(lq))||
-      (p.mineral_type&&p.mineral_type.toLowerCase().includes(lq))||
-      (p.variety&&p.variety.toLowerCase().includes(lq))
-    ).map(p=>({...p,selected:false}));
-  }
-  renderProductItems(filteredProducts);
-  document.getElementById('sel-count').textContent=`${filteredProducts.length}개 (전체 ${products.length}개)`;
+  applyFilters();
 }
 
 function applyFilters(){
   let result=[...products];
+
+  // 검색어 적용
+  const q=(document.getElementById('list-search')?.value||'').toLowerCase().trim();
+  if(q){
+    result=result.filter(p=>
+      (p.customer_id&&p.customer_id.toString().toLowerCase().includes(q))||
+      (p.factory_id&&p.factory_id.toString().toLowerCase().includes(q))||
+      (p.main_stone&&p.main_stone.toLowerCase().includes(q))||
+      (p.sub_stone&&p.sub_stone.toLowerCase().includes(q))||
+      (p.description&&p.description.toLowerCase().includes(q))||
+      (p.category&&p.category.toLowerCase().includes(q))||
+      (p.title&&p.title.toLowerCase().includes(q))||
+      (p.artist&&p.artist.toLowerCase().includes(q))||
+      (p.mineral_type&&p.mineral_type.toLowerCase().includes(q))||
+      (p.variety&&p.variety.toLowerCase().includes(q))
+    );
+  }
 
   const cat=getFilterVal('f-category');
   const stone=getFilterVal('f-stone');
