@@ -1971,19 +1971,29 @@ function saveProductPhoto(id){
   const btn=document.querySelector('#photo-upload-area-'+id+' .btn-primary');
   if(btn){btn.textContent='업로드 중...';btn.disabled=true;}
   const fileName=id+'_'+Date.now()+'.jpg';
+  const RTDB_URL='https://jewelry-stock-default-rtdb.asia-southeast1.firebasedatabase.app';
+
   uploadToFirebase(photo,fileName)
     .then(url=>{
-      return api({action:'updateProduct',sheet:currentSheet,id,photo:url});
+      // Realtime Database에 URL 저장 (CORS 없음)
+      return fetch(`${RTDB_URL}/photo_urls/${currentSheet}_${id}.json`,{
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({url,sheet:currentSheet,id:String(id),timestamp:Date.now()})
+      }).then(r=>r.json()).then(()=>url);
     })
-    .then(data=>{
-      if(data.status==='ok'){
-        const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
-        if(p) p.photo=pendingPhotoData[id];
-        delete pendingPhotoData[id];
-        showToast('✓ 사진 저장 완료');
-        if(btn){btn.textContent='사진 저장';btn.disabled=false;}
-        openDetail(id);
-      }
+    .then(url=>{
+      // Apps Script에는 action=savePhotoUrl로 짧은 파라미터만 GET으로 전송
+      return fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&action=savePhotoUrl&sheet='+encodeURIComponent(currentSheet)+'&id='+encodeURIComponent(id)+'&rtdb_key='+encodeURIComponent(currentSheet+'_'+id))
+        .then(r=>r.json()).then(()=>url);
+    })
+    .then(url=>{
+      const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
+      if(p) p.photo=url;
+      delete pendingPhotoData[id];
+      showToast('✓ 사진 저장 완료');
+      if(btn){btn.textContent='사진 저장';btn.disabled=false;}
+      openDetail(id);
     })
     .catch(err=>{
       showToast('업로드 실패: '+err.message);
