@@ -2226,6 +2226,7 @@ function renderOrders(items){
         <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
           <button class="btn-sm" onclick="showOrderItemForm('${o.order_id}')">+ 제품</button>
           <button class="btn-sm" onclick="showOrderForm('${o.order_id}')">수정</button>
+          <button class="btn-sm" style="color:var(--red);border-color:#F5C6C6" onclick="deleteOrder('${o.order_id}')">삭제</button>
         </div>
       </div>
       
@@ -2559,6 +2560,18 @@ function changeOrderStatusDirect(orderId, newStatus){
 
 function changeItemStatus(itemId, orderId, current){}
 function quickStatusChange(orderId){}
+
+function deleteOrder(orderId){
+  if(!confirm('주문 전체를 삭제할까요?\n제품 목록도 함께 삭제됩니다.'))return;
+  // 주문 아이템 먼저 삭제
+  const items=orderItems.filter(x=>x.order_id===orderId);
+  const deleteItems=items.map(item=>api({action:'deleteOrderItem',item_id:item.item_id}));
+  Promise.all(deleteItems).then(()=>{
+    api({action:'deleteOrder',order_id:orderId}).then(data=>{
+      if(data.status==='ok'){showToast('✓ 주문 삭제 완료');loadOrders();}
+    });
+  });
+}
 
 function deleteOrderItem(itemId,orderId){
   if(!confirm('삭제할까요?'))return;
