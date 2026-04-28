@@ -823,7 +823,10 @@ function showToast(msg){
 }
 
 function api(params){
-  const hasLargeData=params.photo||params.order_image||params.product_images||params.images;
+  const hasLargeData=(params.photo&&(params.photo.startsWith('data:')||params.photo.length>200))||
+    (params.order_image&&params.order_image.startsWith('data:'))||
+    (params.product_images&&params.product_images.startsWith('data:'))||
+    (params.images&&params.images.startsWith('data:'));
   if(hasLargeData){
     return fetch(cfg.url+'?key='+encodeURIComponent(cfg.key),{
       method:'POST',
