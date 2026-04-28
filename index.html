@@ -2191,16 +2191,20 @@ function loadOrders(){
     if(ordersData.status==='ok'){
       orders=ordersData.data;
       orderItems=itemsData.status==='ok'?itemsData.data:[];
-      
-      let filtered=orders;
-      if(currentOrderTab==='active'){
-        filtered=orders.filter(o=>['주문접수','제작중','완료대기'].includes(o.status));
-      } else if(currentOrderTab==='done'){
-        filtered=orders.filter(o=>o.status==='출고완료');
-      } else if(currentOrderTab==='cancel'){
-        filtered=orders.filter(o=>['취소','유보'].includes(o.status));
-      }
-      renderOrders(filtered);
+
+      // 각 주문의 상태를 아이템 기준으로 재계산
+      orders.forEach(o=>{
+        const items=orderItems.filter(x=>x.order_id===o.order_id);
+        if(items.length){
+          const calc=calcOrderStatus(o.order_id);
+          if(o.status!==calc){
+            o.status=calc;
+            api({action:'updateOrder',order_id:o.order_id,status:calc});
+          }
+        }
+      });
+
+      renderOrders(getFilteredOrders());
     }
   }).catch(()=>{
     el.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div>불러오기 실패</div>';
