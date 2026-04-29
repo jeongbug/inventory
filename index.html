@@ -2057,8 +2057,17 @@ function openDetail(id){
 function openOwnProductDetail(p){
   document.getElementById('modal-title').textContent=p.customer_id+' '+( p.factory_id||'');
   document.getElementById('modal-body').innerHTML=`
-    ${p.photo?`<img src="${p.photo}" style="width:100%;height:160px;object-fit:cover;border-radius:10px;margin-bottom:10px" onerror="this.style.display='none'" alt="">`:''}
+    ${p.photo?`<img src="${p.photo}" style="width:100%;height:160px;object-fit:cover;border-radius:10px;margin-bottom:6px" onerror="this.style.display='none'" alt="">`:''}
     ${!p.photo?`<div style="margin-top:8px;padding:8px;background:#FFF3E0;border-radius:var(--radius-sm);font-size:12px;color:#E65100;margin-bottom:8px">📷 사진 없음</div>`:''}
+    ${p.images&&p.images.split(',').filter(Boolean).length?`
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch">
+        ${p.images.split(',').filter(Boolean).map(img=>`
+          <img src="${img}" 
+            style="height:100px;width:100px;object-fit:cover;border-radius:8px;flex-shrink:0;cursor:pointer" 
+            onclick="openRefImage('${img}')" 
+            onerror="this.style.display='none'" alt="">
+        `).join('')}
+      </div>`:''}
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
       <div style="background:var(--surface);border-radius:var(--radius-sm);padding:8px">
