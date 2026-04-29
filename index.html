@@ -1141,6 +1141,7 @@ function renderRegForm(sheet){
         <input type="file" accept="image/*" onchange="handleImage(this)" />
         <img id="upload-preview" class="upload-preview" />
         <div class="compress-info" id="compress-info"></div>
+        <button id="upload-delete-btn" onclick="clearRegPhoto()" style="display:none;margin-top:4px;padding:4px 10px;font-size:11px;border:1px solid #F5C6C6;border-radius:6px;background:transparent;cursor:pointer;color:var(--red);font-family:'Noto Sans KR',sans-serif">✕ 사진 삭제</button>
       </div>
     </div>
     <div class="form-group">
@@ -1189,10 +1190,24 @@ function handleImage(inp){
       const info=document.getElementById('compress-info');
       info.textContent=`압축: ${originalSize}KB → ${compSize}KB`;
       info.style.display='block';
+      // 삭제 버튼 표시
+      const delBtn=document.getElementById('upload-delete-btn');
+      if(delBtn) delBtn.style.display='inline-block';
     };
     img.src=e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function clearRegPhoto(){
+  compressedImageBase64='';
+  const prev=document.getElementById('upload-preview');
+  if(prev){prev.src='';prev.style.display='none';}
+  document.getElementById('upload-label').textContent='📷 사진 선택 (자동 압축)';
+  const info=document.getElementById('compress-info');
+  if(info){info.textContent='';info.style.display='none';}
+  const delBtn=document.getElementById('upload-delete-btn');
+  if(delBtn) delBtn.style.display='none';
 }
 
 function handleMultipleImages(inp,field){
@@ -1230,56 +1245,68 @@ function getVal(id){const el=document.getElementById(id);return el?el.value:'';}
 function registerProduct(){
   const sheet=currentRegSheet;
   const category=getVal('reg-category');
-  const salePrice=getVal('reg-sale-price');
   if(!category){showToast('분류를 선택하세요');return;}
-  if(!salePrice){showToast('소비자가를 입력하세요');return;}
   const btn=document.getElementById('btn-reg');
   btn.textContent='등록 중...';btn.disabled=true;
-  const params={
-    action:'addProduct',sheet,category,
-    factory_id:getVal('reg-factory'),
-    description:getVal('reg-desc'),
-    photo:compressedImageBase64,
-    sale_price:salePrice,
-    stock_status:getVal('reg-stock'),
-    visible_retail:getVal('reg-visible-retail'),
-    visible_wholesale:getVal('reg-visible-wholesale'),
-    main_stone:getVal('reg-main-stone'),
-    sub_stone:getVal('reg-sub-stone'),
-    set_number:getVal('reg-set-number'),
-    original_id:getVal('reg-original-id'),
-    modify_desc:getVal('reg-modify-desc'),
-    brand:getVal('reg-brand'),
-    base_material:getVal('reg-base-material'),
-    plating:getVal('reg-plating'),
-    title:getVal('reg-title'),
-    artist:getVal('reg-artist'),
-    gems_used:getVal('reg-gems'),
-    size:getVal('reg-size'),
-    certificate:getVal('reg-cert'),
-    mineral_type:getVal('reg-mineral'),
-    variety:getVal('reg-variety'),
-    origin:getVal('reg-origin'),
-    size_weight:getVal('reg-size-weight'),
-    stock_quantity:getVal('reg-quantity'),
-    individual_manage:getVal('reg-individual'),
-    popup_price:getVal('reg-popup-price'),
-    wholesale_price:getVal('reg-wholesale-price'),
-    cost_price:getVal('reg-cost-price'),
-    order_ref:getVal('reg-order-ref'),
-    images:(extraImages['images']||[]).join(','),
-    documents:(extraImages['documents']||[]).join(','),
+
+  const doRegister=(photoUrl)=>{
+    const params={
+      action:'addProduct',sheet,category,
+      factory_id:getVal('reg-factory'),
+      description:getVal('reg-desc'),
+      photo:photoUrl||'',
+      sale_price:getVal('reg-sale-price'),
+      stock_status:getVal('reg-stock'),
+      visible_retail:getVal('reg-visible-retail'),
+      visible_wholesale:getVal('reg-visible-wholesale'),
+      main_stone:getVal('reg-main-stone'),
+      sub_stone:getVal('reg-sub-stone'),
+      set_number:getVal('reg-set-number'),
+      original_id:getVal('reg-original-id'),
+      modify_desc:getVal('reg-modify-desc'),
+      brand:getVal('reg-brand'),
+      base_material:getVal('reg-base-material'),
+      plating:getVal('reg-plating'),
+      title:getVal('reg-title'),
+      artist:getVal('reg-artist'),
+      gems_used:getVal('reg-gems'),
+      size:getVal('reg-size'),
+      certificate:getVal('reg-cert'),
+      mineral_type:getVal('reg-mineral'),
+      variety:getVal('reg-variety'),
+      origin:getVal('reg-origin'),
+      size_weight:getVal('reg-size-weight'),
+      stock_quantity:getVal('reg-quantity'),
+      individual_manage:getVal('reg-individual'),
+      popup_price:getVal('reg-popup-price'),
+      wholesale_price:getVal('reg-wholesale-price'),
+      cost_price:getVal('reg-cost-price'),
+      order_ref:getVal('reg-order-ref'),
+      base_weight:getVal('reg-base-weight')||'',
+      stone_info:getVal('reg-stone-info')||'',
+    };
+    api(params).then(data=>{
+      btn.textContent='등록하기';btn.disabled=false;
+      if(data.status==='ok'){
+        showToast('✓ 등록 완료! 고객번호: '+data.customer_id);
+        compressedImageBase64='';extraImages={};
+        renderRegForm(sheet);
+      } else {
+        showToast('오류: '+(data.message||'등록 실패'));
+      }
+    }).catch(()=>{btn.textContent='등록하기';btn.disabled=false;showToast('등록 실패');});
   };
-  api(params).then(data=>{
-    btn.textContent='등록하기';btn.disabled=false;
-    if(data.status==='ok'){
-      showToast('✓ 등록 완료! 고객번호: '+data.customer_id);
-      compressedImageBase64='';extraImages={};
-      renderRegForm(sheet);
-    } else {
-      showToast('오류: '+(data.message||'등록 실패'));
-    }
-  }).catch(()=>{btn.textContent='등록하기';btn.disabled=false;showToast('등록 실패');});
+
+  // 사진이 있으면 Firebase에 먼저 업로드
+  if(compressedImageBase64){
+    const fileName='reg_'+sheet+'_'+Date.now()+'.jpg';
+    btn.textContent='사진 업로드 중...';
+    uploadToFirebase(compressedImageBase64, fileName)
+      .then(url=>doRegister(url))
+      .catch(()=>{showToast('사진 업로드 실패');btn.textContent='등록하기';btn.disabled=false;});
+  } else {
+    doRegister('');
+  }
 }
 
 // ================================
