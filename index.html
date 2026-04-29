@@ -689,6 +689,11 @@ window._fbReady = true;
   </div>
 </div>
 
+<div id="img-viewer" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:300;align-items:center;justify-content:center" onclick="closeImgViewer()">
+  <img id="img-viewer-img" style="max-width:95%;max-height:95%;object-fit:contain;border-radius:8px" alt="" />
+  <button onclick="closeImgViewer()" style="position:fixed;top:16px;right:16px;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:28px;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+</div>
+
 <div class="toast" id="toast"></div>
 </div>
 
@@ -2497,12 +2502,14 @@ function searchBatchPrice(){
 // ================================
 // 카탈로그
 // ================================
-let currentCatalogChannel='retail';
+let currentCatalogChannel=localStorage.getItem('jw_catalog_channel')||'retail';
 
 function selectCatalogChannel(channel){
   currentCatalogChannel=channel;
+  localStorage.setItem('jw_catalog_channel',channel);
   const rBtn=document.getElementById('catalog-retail-btn');
   const wBtn=document.getElementById('catalog-wholesale-btn');
+  if(!rBtn||!wBtn)return;
   if(channel==='retail'){
     rBtn.style.cssText='flex:1;padding:9px;font-size:13px;font-weight:700;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#fff;cursor:pointer';
     wBtn.style.cssText='flex:1;padding:9px;font-size:13px;font-weight:700;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--panel);color:var(--text2);cursor:pointer';
@@ -2510,17 +2517,15 @@ function selectCatalogChannel(channel){
     wBtn.style.cssText='flex:1;padding:9px;font-size:13px;font-weight:700;border:none;border-radius:var(--radius-sm);background:#1A3A6B;color:#fff;cursor:pointer';
     rBtn.style.cssText='flex:1;padding:9px;font-size:13px;font-weight:700;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--panel);color:var(--text2);cursor:pointer';
   }
-  loadCatalog();
-}
-
-function selectCatalogSheet(el,sheet){
-  document.querySelectorAll('#view-catalog .sheet-tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  currentCatalogSheet=sheet;
-  loadCatalog();
+  fetchCatalogData();
 }
 
 function loadCatalog(){
+  // 저장된 채널로 버튼 상태 복원 후 데이터 로드
+  selectCatalogChannel(currentCatalogChannel);
+}
+
+function fetchCatalogData(){
   const el=document.getElementById('catalog-grid');
   el.innerHTML='<div class="loading-state">불러오는 중...</div>';
   api({action:'getAll',sheet:currentCatalogSheet}).then(data=>{
@@ -2530,6 +2535,13 @@ function loadCatalog(){
       renderCatalogItems(items);
     }
   });
+}
+
+function selectCatalogSheet(el,sheet){
+  document.querySelectorAll('#view-catalog .sheet-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentCatalogSheet=sheet;
+  loadCatalog();
 }
 
 function renderCatalog(){loadCatalog();}
@@ -3346,9 +3358,16 @@ function deleteReference(refId){
 }
 
 function openRefImage(src){
-  document.getElementById('modal-title').textContent='이미지';
-  document.getElementById('modal-body').innerHTML=`<img src="${src}" style="width:100%;border-radius:var(--radius-sm)" alt="">`;
-  document.getElementById('modal').classList.add('open');
+  const viewer=document.getElementById('img-viewer');
+  const img=document.getElementById('img-viewer-img');
+  img.src=src;
+  viewer.style.display='flex';
+  // 상세 모달은 그대로 유지
+}
+
+function closeImgViewer(){
+  document.getElementById('img-viewer').style.display='none';
+  document.getElementById('img-viewer-img').src='';
 }
 
 function closeRefModal(){
