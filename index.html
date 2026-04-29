@@ -771,6 +771,34 @@ function onFactoryChange(val){
   if(hidden) hidden.value=val;
 }
 
+function onCategoryChange(val){
+  updateBaseDropdown(val);
+}
+
+function updateBaseDropdown(categoryVal){
+  const el=document.getElementById('reg-base-material');
+  if(!el)return;
+  el.innerHTML='<option value="">선택...</option>';
+  
+  const cat=categoryVal||document.getElementById('reg-category')?.value||'';
+  const isGold=cat.startsWith('골드_');
+  const isSilver=cat.startsWith('실버_');
+
+  metalsCache.forEach(m=>{
+    const name=m.name||'';
+    const isGoldMetal=name.includes('K')||name.includes('골드');
+    const isSilverMetal=name.includes('실버');
+    
+    // 필터링
+    if(isGold && !isGoldMetal) return;
+    if(isSilver && !isSilverMetal) return;
+
+    const o=document.createElement('option');
+    o.value=name;o.textContent=name;
+    el.appendChild(o);
+  });
+}
+
 function autoGenModelNo(){
   const factoryId=document.getElementById('reg-factory-select')?.value;
   if(!factoryId){showToast('공장을 먼저 선택하세요');return;}
@@ -1096,7 +1124,7 @@ function renderRegForm(sheet){
   let html=`
     <div class="form-group">
       <label>분류</label>
-      <select id="reg-category">${cats.map(c=>`<option>${c}</option>`).join('')}</select>
+      <select id="reg-category" onchange="onCategoryChange(this.value)">${cats.map(c=>`<option>${c}</option>`).join('')}</select>
     </div>
     <div class="form-group">
       <label>공장번호 / 원본번호</label>
