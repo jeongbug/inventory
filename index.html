@@ -159,10 +159,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 /* 모달 */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:none;align-items:flex-end;justify-content:center}
 .modal-bg.open{display:flex}
-.modal{background:var(--panel);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto}
+.modal{background:var(--panel);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto;position:relative}
 .modal-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 14px}
-.modal-title{font-size:15px;font-weight:700;margin-bottom:12px}
-.modal-close{float:right;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);margin-top:-2px}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:12px;padding-right:32px}
+.modal-close{position:sticky;top:0;float:right;background:var(--panel);border:none;font-size:22px;cursor:pointer;color:var(--text2);width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;margin-top:-4px;margin-bottom:-28px;z-index:10}
 .detail-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
 .detail-row .lbl{color:var(--text2);flex-shrink:0}
 .detail-row .val{font-weight:500;text-align:right;word-break:break-all}
