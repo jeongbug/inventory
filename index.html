@@ -761,6 +761,33 @@ function addNewStone(){
 let metalsCache=[];
 let platingsCache=[];
 
+function onFactoryChange(val){
+  document.getElementById('reg-factory').value=val;
+}
+
+function autoGenModelNo(){
+  const factoryId=document.getElementById('reg-factory-select')?.value;
+  if(!factoryId){showToast('공장을 먼저 선택하세요');return;}
+  api({action:'generateModelNo',factory_id:factoryId}).then(data=>{
+    if(data.status==='ok'){
+      document.getElementById('reg-model-no').value=data.model_no;
+      showToast('✓ 모델번호: '+data.model_no);
+    }
+  });
+}
+
+function populateFactorySelect(){
+  const sel=document.getElementById('reg-factory-select');
+  if(!sel)return;
+  sel.innerHTML='<option value="">선택...</option>';
+  const factories=factoriesCache.filter(f=>f.type==='제품공장');
+  factories.forEach(f=>{
+    const o=document.createElement('option');
+    o.value=f.name;o.textContent=f.name;
+    sel.appendChild(o);
+  });
+}
+
 function loadMaterials(){
   api({action:'getMetals'}).then(data=>{
     if(data.status==='ok'){
@@ -774,6 +801,17 @@ function loadMaterials(){
       updatePlatingDropdown();
     }
   });
+  // 공장 드롭다운도 채우기
+  if(!factoriesCache.length){
+    api({action:'getFactories'}).then(data=>{
+      if(data.status==='ok'){
+        factoriesCache=data.data;
+        populateFactorySelect();
+      }
+    });
+  } else {
+    populateFactorySelect();
+  }
   if(userRole==='admin'){
     const g=document.getElementById('new-material-group');
     if(g)g.style.display='block';
@@ -1010,6 +1048,20 @@ function selectRegSheet(el,sheet){
   },100);
 }
 
+function clearRegForm(sheet){
+  // 텍스트/숫자 입력값만 초기화
+  ['reg-factory','reg-model-no','reg-desc','reg-sale-price','reg-wholesale-price','reg-cost-price',
+   'reg-popup-price','reg-order-ref','reg-set-number','reg-original-id','reg-modify-desc',
+   'reg-title','reg-artist','reg-gems','reg-size','reg-cert','reg-size-weight',
+   'reg-quantity','reg-origin','reg-base-weight','reg-stone-info','reg-brand'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.value='';
+  });
+  // 사진 초기화
+  clearRegPhoto();
+  // 재고/노출은 기본값 유지 (드롭다운은 그대로)
+}
+
 function renderRegForm(sheet){
   const cats=CATEGORIES[sheet]||[];
   let html=`
@@ -1048,6 +1100,17 @@ function renderRegForm(sheet){
 
   if(sheet==='Own_Products'){
     html+=`
+      <div class="form-group">
+        <label>제작 공장</label>
+        <select id="reg-factory-select" onchange="onFactoryChange(this.value)">
+          <option value="">선택...</option>
+        </select>
+        <input type="hidden" id="reg-factory" />
+      </div>
+      <div class="form-group">
+        <label>모델번호 <button type="button" onclick="autoGenModelNo()" style="padding:2px 8px;font-size:11px;background:var(--gold);border:none;border-radius:4px;color:#fff;cursor:pointer;margin-left:6px">자동생성</button></label>
+        <input type="text" id="reg-model-no" placeholder="예: DA-001 (자동생성 또는 직접입력)" />
+      </div>
       <div class="form-group"><label>브랜드</label><input type="text" id="reg-brand" placeholder="브랜드명" /></div>
       <div class="form-group">
         <label>베이스 소재</label>
@@ -1057,6 +1120,8 @@ function renderRegForm(sheet){
         <label>도금</label>
         <select id="reg-plating"><option value="없음">없음</option></select>
       </div>
+      <div class="form-group"><label>금 중량 (g)</label><input type="number" id="reg-base-weight" placeholder="예: 3.5" step="0.1" /></div>
+      <div class="form-group"><label>스톤 정보</label><input type="text" id="reg-stone-info" placeholder="예: 루비 3mm×4개" /></div>
       <div class="form-group" id="new-material-group" style="display:none">
         <label>새 소재 추가 (관리자만)</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1071,6 +1136,15 @@ function renderRegForm(sheet){
       <div class="form-group"><label>도매가 (₩)</label><input type="number" id="reg-wholesale-price" placeholder="0" /></div>
       <div class="form-group"><label>원가 (₩)</label><input type="number" id="reg-cost-price" placeholder="0" /><p class="hint">내부용</p></div>
       <div class="form-group"><label>주문서 참조번호</label><input type="text" id="reg-order-ref" placeholder="예: PO-2024-001" /></div>
+      <div class="form-group">
+        <label>판매 채널</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" id="ch-retail" value="retail" checked /> 소매</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" id="ch-wholesale" value="wholesale" /> 도매</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" id="ch-popup" value="popup" /> 팝업</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" id="ch-online" value="online" /> 온라인</label>
+        </div>
+      </div>
       <div class="form-group">
         <label>추가사진 (다각도, 착용샷)</label>
         <div class="upload-area">
@@ -1129,7 +1203,10 @@ function renderRegForm(sheet){
       <label>재고 상태</label>
       <select id="reg-stock">
         <option>재고있음</option>
+        ${sheet==='Own_Products'?`
+        <option>재고없음(재제작가능)</option>
         <option>재고없음</option>
+        `:`<option>재고없음</option>`}
         <option>단종</option>
       </select>
     </div>
@@ -1144,6 +1221,7 @@ function renderRegForm(sheet){
         <button id="upload-delete-btn" onclick="clearRegPhoto()" style="display:none;margin-top:4px;padding:4px 10px;font-size:11px;border:1px solid #F5C6C6;border-radius:6px;background:transparent;cursor:pointer;color:var(--red);font-family:'Noto Sans KR',sans-serif">✕ 사진 삭제</button>
       </div>
     </div>
+    ${sheet!=='Own_Products'?`
     <div class="form-group">
       <label>소매 노출</label>
       <select id="reg-visible-retail">
@@ -1157,7 +1235,9 @@ function renderRegForm(sheet){
         <option value="N">숨김</option>
         <option value="Y">노출</option>
       </select>
-    </div>
+    </div>`:`
+    <input type="hidden" id="reg-visible-retail" value="N" />
+    <input type="hidden" id="reg-visible-wholesale" value="N" />`}
     <button class="btn-reg" id="btn-reg" onclick="registerProduct()">등록하기</button>`;
 
   document.getElementById('reg-form').innerHTML=html;
@@ -1250,15 +1330,24 @@ function registerProduct(){
   btn.textContent='등록 중...';btn.disabled=true;
 
   const doRegister=(photoUrl)=>{
+    // 판매채널 처리
+    const retailChecked=document.getElementById('ch-retail')?.checked;
+    const wholesaleChecked=document.getElementById('ch-wholesale')?.checked;
+    const popupChecked=document.getElementById('ch-popup')?.checked;
+    const onlineChecked=document.getElementById('ch-online')?.checked;
+
     const params={
       action:'addProduct',sheet,category,
-      factory_id:getVal('reg-factory'),
+      factory_id:getVal('reg-factory')||getVal('reg-factory-select'),
+      model_no:getVal('reg-model-no')||'',
       description:getVal('reg-desc'),
       photo:photoUrl||'',
       sale_price:getVal('reg-sale-price'),
       stock_status:getVal('reg-stock'),
-      visible_retail:getVal('reg-visible-retail'),
-      visible_wholesale:getVal('reg-visible-wholesale'),
+      visible_retail:retailChecked?'Y':(getVal('reg-visible-retail')||'N'),
+      visible_wholesale:wholesaleChecked?'Y':(getVal('reg-visible-wholesale')||'N'),
+      visible_popup:popupChecked?'Y':'N',
+      visible_online:onlineChecked?'Y':'N',
       main_stone:getVal('reg-main-stone'),
       sub_stone:getVal('reg-sub-stone'),
       set_number:getVal('reg-set-number'),
@@ -1290,7 +1379,7 @@ function registerProduct(){
       if(data.status==='ok'){
         showToast('✓ 등록 완료! 고객번호: '+data.customer_id);
         compressedImageBase64='';extraImages={};
-        renderRegForm(sheet);
+        clearRegForm(sheet);
       } else {
         showToast('오류: '+(data.message||'등록 실패'));
       }
