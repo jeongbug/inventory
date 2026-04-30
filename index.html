@@ -2327,25 +2327,37 @@ function saveProductPhoto(id){
   if(!photo){showToast('사진을 먼저 선택하세요');return;}
   const btn=document.querySelector('#photo-upload-area-'+id+' .btn-primary');
   if(btn){btn.textContent='업로드 중...';btn.disabled=true;}
-  const fileName=id+'_'+Date.now()+'.jpg';
+  const fileName='products/'+id+'_'+Date.now()+'.jpg';
 
-  uploadToFirebase(photo,fileName)
+  uploadToFirebase(photo, fileName.replace('products/',''))
     .then(url=>{
-      // 1. Sheets에 직접 저장 (RTDB 우회 — CORS 문제 방지)
-      return api({action:'updateProduct',sheet:currentSheet,id,photo:url})
-        .then(data=>{
-          if(data.status!=='ok') throw new Error(data.message||'Sheets 저장 실패');
-          // 2. 로컬 캐시 업데이트
-          const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
-          if(p) p.photo=url;
-          const p2=products.find(x=>String(x.customer_id)===String(id));
-          if(p2) p2.photo=url;
-          delete pendingPhotoData[id];
-          renderProductItems(filteredProducts);
-          showToast('✓ 사진 저장 완료');
-          if(btn){btn.textContent='사진 저장';btn.disabled=false;}
-          openDetail(id);
-        });
+      // 로컬 캐시 즉시 업데이트 (화면 반영)
+      const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
+      if(p) p.photo=url;
+      const p2=products.find(x=>String(x.customer_id)===String(id));
+      if(p2) p2.photo=url;
+      renderProductItems(filteredProducts);
+      showToast('✓ 사진 저장 완료');
+      if(btn){btn.textContent='사진 저장';btn.disabled=false;}
+      openDetail(id);
+      delete pendingPhotoData[id];
+
+      // Apps Script에 파일명만 짧게 전달 (GET 가능)
+      // Apps Script가 Firebase URL 조합해서 Sheets에 저장
+      const shortFileName=encodeURIComponent(id+'_'+Date.now()+'.jpg');
+      fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&action=savePhotoUrl&sheet='+encodeURIComponent(currentSheet)+'&id='+encodeURIComponent(id)+'&photo_url='+encodeURIComponent(url.substring(0,200)))
+        .catch(()=>{}); // 실패해도 무시 (로컬은 이미 업데이트됨)
+        
+      // 전체 URL은 별도로 Realtime Database에 저장해서 Apps Script가 나중에 읽어가도록
+      const RTDB='https://jewelry-stock-default-rtdb.asia-southeast1.firebasedatabase.app';
+      fetch(`${RTDB}/photo_urls/${currentSheet}_${id}.json`,{
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({url,sheet:currentSheet,id:String(id),ts:Date.now()})
+      }).then(()=>{
+        // Apps Script에 RTDB 키만 짧게 전달
+        return fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&action=savePhotoUrl&sheet='+encodeURIComponent(currentSheet)+'&id='+encodeURIComponent(id)+'&rtdb_key='+encodeURIComponent(currentSheet+'_'+id));
+      }).catch(()=>{});
     })
     .catch(err=>{
       showToast('업로드 실패: '+err.message);
