@@ -2108,7 +2108,8 @@ function openOwnProductDetail(p){
     <div style="font-size:12px;line-height:1.8;margin-bottom:8px">
       ${p.brand?`<div><span style="color:var(--text3)">브랜드: </span>${p.brand}</div>`:''}
       ${p.factory_id?`<div><span style="color:var(--text3)">공장: </span>${p.factory_id}</div>`:''}
-      ${p.model_no?`<div style="margin:4px 0;padding:8px 12px;background:#FFF3E0;border-radius:var(--radius-sm);border-left:4px solid #C07020"><div style="font-size:10px;color:var(--text3);margin-bottom:2px">📦 공장번호 (주문 시 이 번호로 주문하세요)</div><div style="font-size:20px;font-weight:700;color:#C07020;font-family:monospace;letter-spacing:0.5px">${p.model_no}</div></div>`:''}      ${p.base_material?`<div><span style="color:var(--text3)">소재: </span>${p.base_material}${p.plating&&p.plating!=='없음'?' / '+p.plating:''}</div>`:''}
+      ${p.model_no?`<div style="margin:4px 0;padding:8px 12px;background:#FFF3E0;border-radius:var(--radius-sm);border-left:4px solid #C07020"><div style="font-size:10px;color:var(--text3);margin-bottom:2px">📦 공장번호 (주문 시 이 번호로 주문하세요)</div><div style="font-size:20px;font-weight:700;color:#C07020;font-family:monospace;letter-spacing:0.5px">${p.model_no}</div></div>`:''}
+      ${p.base_material?`<div><span style="color:var(--text3)">소재: </span>${p.base_material}${p.plating&&p.plating!=='없음'?' / '+p.plating:''}</div>`:''}
       ${p.base_weight?`<div><span style="color:var(--text3)">금 중량: </span>${p.base_weight}g</div>`:''}
       ${p.stone_info?`<div><span style="color:var(--text3)">스톤: </span>${p.stone_info}</div>`:''}
       ${p.cost_price?`<div><span style="color:var(--text3)">원가: </span>₩${Number(p.cost_price).toLocaleString()}</div>`:''}
@@ -2327,31 +2328,24 @@ function saveProductPhoto(id){
   const btn=document.querySelector('#photo-upload-area-'+id+' .btn-primary');
   if(btn){btn.textContent='업로드 중...';btn.disabled=true;}
   const fileName=id+'_'+Date.now()+'.jpg';
-  const RTDB_URL='https://jewelry-stock-default-rtdb.asia-southeast1.firebasedatabase.app';
 
   uploadToFirebase(photo,fileName)
     .then(url=>{
-      // 1. 로컬 캐시 즉시 업데이트 → 목록에 바로 반영
-      const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
-      if(p) p.photo=url;
-      const p2=products.find(x=>String(x.customer_id)===String(id));
-      if(p2) p2.photo=url;
-      delete pendingPhotoData[id];
-      renderProductItems(filteredProducts);
-      showToast('✓ 사진 저장 완료');
-      if(btn){btn.textContent='사진 저장';btn.disabled=false;}
-      openDetail(id);
-
-      // 2. Realtime Database에 URL 저장 (백그라운드)
-      fetch(`${RTDB_URL}/photo_urls/${currentSheet}_${id}.json`,{
-        method:'PUT',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({url,sheet:currentSheet,id:String(id),timestamp:Date.now()})
-      }).then(()=>{
-        // 3. Apps Script에 Sheets 저장 요청 (실패해도 무관)
-        fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&action=savePhotoUrl&sheet='+encodeURIComponent(currentSheet)+'&id='+encodeURIComponent(id)+'&rtdb_key='+encodeURIComponent(currentSheet+'_'+id))
-          .catch(()=>{}); // CORS 오류 무시
-      }).catch(()=>{});
+      // 1. Sheets에 직접 저장 (RTDB 우회 — CORS 문제 방지)
+      return api({action:'updateProduct',sheet:currentSheet,id,photo:url})
+        .then(data=>{
+          if(data.status!=='ok') throw new Error(data.message||'Sheets 저장 실패');
+          // 2. 로컬 캐시 업데이트
+          const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
+          if(p) p.photo=url;
+          const p2=products.find(x=>String(x.customer_id)===String(id));
+          if(p2) p2.photo=url;
+          delete pendingPhotoData[id];
+          renderProductItems(filteredProducts);
+          showToast('✓ 사진 저장 완료');
+          if(btn){btn.textContent='사진 저장';btn.disabled=false;}
+          openDetail(id);
+        });
     })
     .catch(err=>{
       showToast('업로드 실패: '+err.message);
