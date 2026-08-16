@@ -2248,7 +2248,6 @@ function editOwnProductChannels(id){
 let pendingPhotoData={};
 
 async function uploadToFirebase(base64Data, fileName){
-  // 최대 3초 대기
   let waited=0;
   while(!window._fbReady && waited<3000){
     await new Promise(r=>setTimeout(r,100));
@@ -2263,7 +2262,11 @@ async function uploadToFirebase(base64Data, fileName){
   const blob=new Blob([array],{type:'image/jpeg'});
   const storageRef=window._fbRef(window._fbStorage,'products/'+fileName);
   await window._fbUploadBytes(storageRef,blob);
-  return await window._fbGetDownloadURL(storageRef);
+
+  // 짧은 공개 URL (토큰 없음 - Storage 규칙이 public read)
+  const bucket='jewelry-stock.firebasestorage.app';
+  const path=encodeURIComponent('products/'+fileName);
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${path}?alt=media`;
 }
 
 let pendingExtraPhotos={};
